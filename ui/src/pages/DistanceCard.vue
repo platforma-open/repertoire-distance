@@ -32,7 +32,7 @@ const props = defineModel<Metric>({
     type: undefined,
     intersection: 'CDR3ntVJ',
     downsampling: {
-      type: 'Random Sampling',
+      type: 'hypergeometric',
       valueChooser: 'auto',
     },
   },

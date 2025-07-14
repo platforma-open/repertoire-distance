@@ -149,7 +149,6 @@ wf.body(func(args) {
 		if geneColumn.spec.domain["pl7.app/vdj/reference"] == "VGene" || geneColumn.spec.domain["pl7.app/vdj/reference"] == "JGene" {
 			if isSingleCell {
 				if geneColumn.spec.domain["pl7.app/vdj/scClonotypeChain/index"] == "primary" {
-					ll.print("__THE_LOG__"+geneColumn.spec)
 					chain := geneColumn.spec.domain["pl7.app/vdj/scClonotypeChain"]
 					table.add(columns.getColumn(geneColumn.key), {header: geneColumn.spec.domain["pl7.app/vdj/reference"] + " " + chain})
 				}

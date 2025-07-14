@@ -1,5 +1,5 @@
 import type { InferOutputsType, PColumnIdAndSpec } from '@platforma-sdk/model';
-import { BlockModel, createPFrameForGraphs } from '@platforma-sdk/model';
+import { BlockModel, createPFrameForGraphs, isPColumnSpec } from '@platforma-sdk/model';
 import type { BlockArgs, UiState } from './types';
 import { createDefaultUiState, createDefaultMetricUis } from './uiState';
 
@@ -18,18 +18,24 @@ export const model = BlockModel.create()
   )
 
   .output('abundanceOptions', (ctx) =>
-    ctx.resultPool.getOptions([{
-      axes: [
-        { name: 'pl7.app/sampleId' },
-        { },
-      ],
-      annotations: {
-        'pl7.app/isAbundance': 'true',
-        'pl7.app/abundance/normalized': 'false',
-        'pl7.app/abundance/isPrimary': 'true',
-      },
-    },
-    ], { includeNativeLabel: false }),
+    ctx.resultPool.getOptions((spec) => {
+      if (!isPColumnSpec(spec)) return false;
+
+      // Check basic abundance criteria
+      const hasCorrectAnnotations
+        = spec.annotations?.['pl7.app/isAbundance'] === 'true'
+          && spec.annotations?.['pl7.app/abundance/normalized'] === 'false'
+          && spec.annotations?.['pl7.app/abundance/isPrimary'] === 'true';
+
+      // Check axes structure
+      const hasCorrectAxes = spec.axesSpec?.length >= 2
+        && spec.axesSpec[0]?.name === 'pl7.app/sampleId';
+
+      // Filter out data with clustering algorithm in axes[1].domain
+      const hasClusteringAlgorithm = spec.axesSpec?.[1]?.domain?.['pl7.app/vdj/clustering/algorithm'] !== undefined;
+
+      return hasCorrectAnnotations && hasCorrectAxes && !hasClusteringAlgorithm;
+    }, { includeNativeLabel: false }),
   )
 
   .output('pf', (ctx) => {
