@@ -212,13 +212,16 @@ def main():
     df.columns = [col.strip().replace('"', '').replace(' ', '') for col in df.columns]
     
     # Attempt to detect if it's single-cell dual-chain data based on column presence
-    # Prioritize 'B' chain columns for detection as they distinguish single-cell
-    single_cell_cols_present = {
-        'CDR3aaB', 'CDR3ntB', 'VGeneB', 'JGeneB'
-    }.issubset(df.columns)
-
+    # Check for both A and B chain columns to ensure complete single-cell data
+    single_cell_a_chain_cols = {'CDR3aaA', 'CDR3ntA', 'VGeneA', 'JGeneA'}
+    single_cell_b_chain_cols = {'CDR3aaB', 'CDR3ntB', 'VGeneB', 'JGeneB'}
+    
+    a_chain_present = single_cell_a_chain_cols.issubset(df.columns)
+    b_chain_present = single_cell_b_chain_cols.issubset(df.columns)
+    
     is_single_cell_data = False
-    if single_cell_cols_present:
+    if a_chain_present and b_chain_present:
+        # Complete single-cell dual-chain data detected
         is_single_cell_data = True
         # Rename single-cell columns to standardized internal names (_A, _B suffix)
         df.rename(columns={
@@ -232,6 +235,20 @@ def main():
             'CDR3aa_A', 'CDR3nt_A', 'VGene_A', 'JGene_A',
             'CDR3aa_B', 'CDR3nt_B', 'VGene_B', 'JGene_B'
         }
+    elif a_chain_present and not b_chain_present:
+        # Only A-chain columns present - treat as bulk data using A-chain
+        df.rename(columns={
+            'CDR3aaA': 'CDR3aa', 'CDR3ntA': 'CDR3nt', 'VGeneA': 'VGene', 'JGeneA': 'JGene',
+            'count': 'numberOfreads'
+        }, inplace=True)
+        required_cols = {'sampleId', 'numberOfreads', 'CDR3aa', 'CDR3nt', 'VGene', 'JGene'}
+    elif b_chain_present and not a_chain_present:
+        # Only B-chain columns present - treat as bulk data using B-chain
+        df.rename(columns={
+            'CDR3aaB': 'CDR3aa', 'CDR3ntB': 'CDR3nt', 'VGeneB': 'VGene', 'JGeneB': 'JGene',
+            'count': 'numberOfreads'
+        }, inplace=True)
+        required_cols = {'sampleId', 'numberOfreads', 'CDR3aa', 'CDR3nt', 'VGene', 'JGene'}
     else:
         # Assume bulk data, rename original columns
         df.rename(columns={
