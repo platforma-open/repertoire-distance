@@ -34,6 +34,7 @@ const showSettings = () => {
       v-model="app.model.ui.tableState"
       :settings="tableSettings"
       show-export-button
+      disable-filters-panel
       not-ready-text="Data is not computed"
     />
   </PlBlockPage>
