@@ -1,6 +1,8 @@
 import type { GraphMakerState } from '@milaboratories/graph-maker';
-import type { InferOutputsType, PColumnIdAndSpec, PColumnSpec, PlDataTableState, PlRef } from '@platforma-sdk/model';
-import { BlockModel, createPFrameForGraphs, createPlDataTableV2, isPColumnSpec } from '@platforma-sdk/model';
+import type { InferOutputsType, PColumnIdAndSpec, PColumnSpec, PlDataTableStateV2, PlRef } from '@platforma-sdk/model';
+import { BlockModel, createPFrameForGraphs, createPlDataTableStateV2, createPlDataTableV2, isPColumnSpec } from '@platforma-sdk/model';
+
+export * from './convertes';
 
 export type DistanceType = 'F1' | 'F2' | 'D' |
   'sharedClonotypes' | 'correlation' | 'jaccard';
@@ -12,6 +14,11 @@ export type Metric = {
   intersection: IntersectionType | undefined;
 };
 
+export type MetricUI = Metric & {
+  id: string;
+  isExpanded: boolean;
+};
+
 export type BlockArgs = {
   abundanceRef?: PlRef;
   metrics: Metric[];
@@ -19,8 +26,9 @@ export type BlockArgs = {
 
 export type UiState = {
   blockTitle: string;
-  tableState?: PlDataTableState;
+  tableState: PlDataTableStateV2;
   graphState: GraphMakerState;
+  metrics: MetricUI[];
 };
 
 function isNumericType(c: PColumnSpec): boolean {
@@ -30,32 +38,7 @@ function isNumericType(c: PColumnSpec): boolean {
 export const model = BlockModel.create()
 
   .withArgs<BlockArgs>({
-    metrics: [
-      {
-        type: 'F1',
-        intersection: 'CDR3ntVJ',
-      },
-      {
-        type: 'F2',
-        intersection: 'CDR3ntVJ',
-      },
-      {
-        type: 'D',
-        intersection: 'CDR3ntVJ',
-      },
-      {
-        type: 'sharedClonotypes',
-        intersection: 'CDR3ntVJ',
-      },
-      {
-        type: 'correlation',
-        intersection: 'CDR3ntVJ',
-      },
-      {
-        type: 'jaccard',
-        intersection: 'CDR3ntVJ',
-      },
-    ],
+    metrics: [],
   })
 
   .withUiState<UiState>({
@@ -66,13 +49,46 @@ export const model = BlockModel.create()
       currentTab: null,
     },
 
-    tableState: {
-      gridState: {},
-      pTableParams: {
-        sorting: [],
-        filters: [],
+    tableState: createPlDataTableStateV2(),
+
+    metrics: [
+      {
+        id: 'F1',
+        type: 'F1',
+        intersection: 'CDR3ntVJ',
+        isExpanded: true,
       },
-    },
+      {
+        id: 'F2',
+        type: 'F2',
+        intersection: 'CDR3ntVJ',
+        isExpanded: false,
+      },
+      {
+        id: 'D',
+        type: 'D',
+        intersection: 'CDR3ntVJ',
+        isExpanded: false,
+      },
+      {
+        id: 'sharedClonotypes',
+        type: 'sharedClonotypes',
+        intersection: 'CDR3ntVJ',
+        isExpanded: false,
+      },
+      {
+        id: 'correlation',
+        type: 'correlation',
+        intersection: 'CDR3ntVJ',
+        isExpanded: false,
+      },
+      {
+        id: 'jaccard',
+        type: 'jaccard',
+        intersection: 'CDR3ntVJ',
+        isExpanded: false,
+      },
+    ],
   })
 
   .argsValid((ctx) => ctx.args.abundanceRef !== undefined)
@@ -91,7 +107,7 @@ export const model = BlockModel.create()
       return undefined;
     }
 
-    return createPlDataTableV2(ctx, pCols, (_) => true, ctx.uiState?.tableState);
+    return createPlDataTableV2(ctx, pCols, ctx.uiState.tableState);
   })
 
   .output('pf', (ctx) => {
