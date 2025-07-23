@@ -7,6 +7,40 @@ from itertools import combinations_with_replacement, product
 from scipy.stats import linregress
 from numpy.random import default_rng
 
+# ---------- Data Filtering ----------
+def filter_vdj_regions(df, is_single_cell_data):
+    """
+    Filter out rows where VDJ regions are empty/null or contain 'region_not_covered'
+    """
+    if is_single_cell_data:
+        # For single-cell data, check both A and B chain VDJ regions
+        vdj_columns = ['VGene_A', 'JGene_A', 'VGene_B', 'JGene_B']
+    else:
+        # For bulk data, check single-chain VDJ regions
+        vdj_columns = ['VGene', 'JGene']
+    
+    # Create mask for valid VDJ regions
+    valid_mask = pd.Series(True, index=df.index)
+    
+    for col in vdj_columns:
+        if col in df.columns:
+            # Filter out empty/null values and 'region_not_covered'
+            col_mask = (
+                df[col].notna() & 
+                (df[col] != '') & 
+                (df[col] != 'region_not_covered')
+            )
+            valid_mask = valid_mask & col_mask
+    
+    filtered_df = df[valid_mask].copy()
+    
+    # Log filtering statistics
+    removed_count = len(df) - len(filtered_df)
+    if removed_count > 0:
+        print(f"Filtered out {removed_count} rows with invalid VDJ regions (empty/null or 'region_not_covered')")
+    
+    return filtered_df
+
 # ---------- Downsampling ----------
 def downsample_df(df, downsampling_config):
     if downsampling_config['type'] == 'none':
@@ -263,6 +297,9 @@ def main():
 
     if not required_cols.issubset(df.columns):
         raise ValueError(f"Missing required columns. Expected for data type detected: {required_cols - set(df.columns)}")
+
+    # Filter out rows with invalid VDJ regions
+    df = filter_vdj_regions(df, is_single_cell_data)
 
     # Load metric config JSON
     with open(args.json, 'r') as f:

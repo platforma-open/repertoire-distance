@@ -157,11 +157,15 @@ wf.body(func(args) {
 			}
 		}
 	}
-	
+
+	table.mem("16GiB")
+	table.cpu(1)	
 	tsv := table.build()
 
 	runDistance := exec.builder().
 		software(distanceSw).
+		mem("16GiB").
+		cpu(1).
 		arg("-i").arg("input.tsv").
 		arg("-o1").arg("full_result.tsv").
 		arg("-o2").arg("unique_result.tsv").
@@ -178,7 +182,7 @@ wf.body(func(args) {
 		distanceResult,
 		"tsv",
 		getFullSpecs(abundanceSpec, args.metrics),
-		{ splitDataAndSpec: true }
+		{ splitDataAndSpec: true, cpu: 1, mem: "16GiB" }
 	)
 
 	trace := pSpec.makeTrace(
