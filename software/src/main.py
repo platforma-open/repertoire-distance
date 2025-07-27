@@ -228,6 +228,29 @@ def compute_metrics_wide(df_original, metric_configs, is_single_cell_data):
     return pd.DataFrame(results.values())
 
 
+# ---------- Empty Output Creation ----------
+def create_empty_outputs(metric_configs, output_full_path, output_unique_path, sep):
+    """
+    Create empty output files with correct column structure when input is empty
+    """
+    # Create metric column names for wide format
+    metric_columns = [f"{config['type']} {config['intersection']}" for config in metric_configs]
+    
+    # Create empty wide format DataFrame
+    wide_columns = ['sample1', 'sample2'] + metric_columns
+    empty_wide_df = pd.DataFrame(columns=wide_columns)
+    
+    # Create empty long format DataFrame
+    long_columns = ['sample1', 'sample2', 'metric', 'value']
+    empty_long_df = pd.DataFrame(columns=long_columns)
+    
+    # Save empty files
+    empty_long_df.to_csv(output_full_path, index=False, sep=sep)
+    empty_wide_df.to_csv(output_unique_path, index=False, sep=sep)
+    
+    print("Empty input detected. Created empty output files with correct column structure.")
+
+
 # ---------- CLI Entry ----------
 def main():
     parser = argparse.ArgumentParser(description="Downsample and compute wide-format clonotype distances between samples, supporting both bulk and single-cell dual-chain data.")
@@ -240,7 +263,21 @@ def main():
     args = parser.parse_args()
     sep = args.sep or ('\t' if args.input.endswith('.tsv') else ',')
 
-    df = pd.read_csv(args.input, sep=sep)
+    # Load metric config JSON first to determine output structure
+    with open(args.json, 'r') as f:
+        metric_configs = json.load(f)
+
+    # Check if input file is empty or has no data
+    try:
+        df = pd.read_csv(args.input, sep=sep)
+        if df.empty:
+            # Create empty output files with correct column structure
+            create_empty_outputs(metric_configs, args.output_full, args.output_unique, sep)
+            return
+    except (pd.errors.EmptyDataError, FileNotFoundError):
+        # Handle empty file or file not found
+        create_empty_outputs(metric_configs, args.output_full, args.output_unique, sep)
+        return
 
     # Clean and normalize column names
     df.columns = [col.strip().replace('"', '').replace(' ', '') for col in df.columns]
@@ -300,10 +337,6 @@ def main():
 
     # Filter out rows with invalid VDJ regions
     df = filter_vdj_regions(df, is_single_cell_data)
-
-    # Load metric config JSON
-    with open(args.json, 'r') as f:
-        metric_configs = json.load(f)
 
     # Apply downsampling for each metric configuration individually
     wide_result_df = compute_metrics_wide(df, metric_configs, is_single_cell_data)

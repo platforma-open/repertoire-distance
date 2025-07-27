@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { PlRef } from '@platforma-sdk/model';
 import { plRefsEqual } from '@platforma-sdk/model';
-import { PlDropdownRef, PlElementList, PlBtnSecondary } from '@platforma-sdk/ui-vue';
+import { PlDropdownRef, PlElementList, PlBtnSecondary, PlAlert } from '@platforma-sdk/ui-vue';
+import { getRawPlatformaInstance } from '@platforma-sdk/model';
+import { asyncComputed } from '@vueuse/core';
 import { useApp } from '../app';
 import { getMetricLabel } from './util';
 import DistanceCard from './DistanceCard.vue';
@@ -19,6 +21,11 @@ function setAbundanceRef(abundanceRef?: PlRef) {
     }
   }
 }
+
+const isEmpty = asyncComputed(async () => {
+  if (app.model.outputs.overlapMetricTable === undefined) return undefined;
+  return (await getRawPlatformaInstance().pFrameDriver.getShape(app.model.outputs.overlapMetricTable)).rows === 0;
+});
 </script>
 
 <template>
@@ -29,6 +36,12 @@ function setAbundanceRef(abundanceRef?: PlRef) {
     required
     @update:model-value="setAbundanceRef"
   />
+
+  <PlAlert v-if="isEmpty === true" type="warn" :style="{ width: '320px' }">
+    <template #title>Empty dataset selection</template>
+    The input dataset you have selected is empty.
+    Please choose a different dataset.
+  </PlAlert>
 
   <PlElementList
     v-model:items="metrics"

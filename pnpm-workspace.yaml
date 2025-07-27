@@ -17,6 +17,7 @@ catalog:
   "@platforma-sdk/eslint-config": ^1.0.3
   "@milaboratories/graph-maker": ^1.1.128
   "@milaboratories/helpers": ^1.6.15
+  "@vueuse/core": ^13.3.0
 
 
   "@platforma-open/milaboratories.runenv-python-3": ^1.1.16

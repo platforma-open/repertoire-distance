@@ -61,6 +61,17 @@ export const model = BlockModel.create()
         } satisfies PColumnIdAndSpec),
     );
   })
+  .output('overlapMetricTable', (ctx) => {
+    const pCols = ctx.outputs?.resolve('pf')?.getPColumns();
+    if (pCols === undefined) {
+      return undefined;
+    }
+    const overlapColumn = pCols.find((p) => p.spec.name === 'pl7.app/vdj/overlap');
+    if (overlapColumn === undefined) {
+      return undefined;
+    }
+    return ctx.createPTable({ columns: [overlapColumn] });
+  })
 
   .output('isRunning', (ctx) => ctx.outputs?.getIsReadyOrError() === false)
 
@@ -74,4 +85,3 @@ export const model = BlockModel.create()
   .done();
 
 export type BlockOutputs = InferOutputsType<typeof model>;
-

@@ -19,7 +19,8 @@
     "@types/lodash.debounce": "^4.0.9",
     "@types/lodash.once": "^4.1.9",
     "lodash.debounce": "^4.0.8",
-    "lodash.once": "^4.1.1"
+    "lodash.once": "^4.1.1",
+    "@vueuse/core": "catalog:"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "catalog:",
