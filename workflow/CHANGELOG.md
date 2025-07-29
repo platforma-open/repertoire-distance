@@ -1,5 +1,16 @@
 # @platforma-open/milaboratories.repertoire-distance.workflow
 
+## 1.2.0
+
+### Minor Changes
+
+- a5f579f: Downsampling added, UI switched to PlElementList, table on MainPage removed, added support for google batch, added support of single cell data
+
+### Patch Changes
+
+- Updated dependencies [a5f579f]
+  - @platforma-open/milaboratories.repertoire-distance-2.software@1.2.0
+
 ## 1.1.1
 
 ### Patch Changes
