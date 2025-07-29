@@ -7,23 +7,25 @@ packages:
   - block
 
 catalog:
-  "@platforma-sdk/model": ^1.39.7
-  "@platforma-sdk/ui-vue": ^1.39.7
-  "@platforma-sdk/workflow-tengo": ^4.8.0
+  "@platforma-sdk/model": ^1.38.0
+  "@platforma-sdk/ui-vue": ^1.38.0
+  "@platforma-sdk/workflow-tengo": ^4.9.2
   "@platforma-sdk/block-tools": ^2.5.55
   "@platforma-sdk/test": ^1.29.17
   "@platforma-sdk/tengo-builder": ^2.1.10
   "@platforma-sdk/package-builder": ^2.16.1
   "@platforma-sdk/eslint-config": ^1.0.3
-  "@milaboratories/graph-maker": ^1.1.114
+  "@milaboratories/graph-maker": ^1.1.128
+  "@milaboratories/helpers": ^1.6.15
+  "@vueuse/core": ^13.3.0
 
 
   "@platforma-open/milaboratories.runenv-python-3": ^1.1.16
   
   "vue": ^3.5.13
-  "vue-tsc": ^2.2.8
+  "vue-tsc": ^2.2.10
   
-  "typescript": ~5.5.4
+  "typescript": ~5.6.3
   "tsup": ~8.3.5
   "turbo": ^2.4.4
 
@@ -33,4 +35,4 @@ catalog:
 
   "@changesets/cli": ^2.28.1
   "js-yaml": "^4.1.0"
-  "sass-embedded": ^1.77.8
+  "sass-embedded": ^1.89.2

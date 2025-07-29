@@ -31,29 +31,7 @@ getLabel := func(mt) {
 	return mt;
 }
 
-getSpecs := func(abundanceSpec, metrics, blockId) {
-	columns := []
-
-	for index, metric in metrics {
-		spec := {
-			column: metric.type + "_" + metric.intersection,
-			spec: {
-					name: "pl7.app/overlap/" + metric.type,
-					valueType: "Double",
-					domain: maps.merge(
-						abundanceSpec.domain,
-						{
-							"pl7.app/overlap/type": metric.type
-						}
-					),
-					annotations: {
-						"pl7.app/label": getLabel(metric.type) + " " + metric.intersection
-					}
-				}
-		}
-		columns = append(columns, spec)
-	}
-
+getFullSpecs := func(abundanceSpec, metrics) {
 	return {
 		axes: [{
 			column: "sample1",
@@ -63,34 +41,57 @@ getSpecs := func(abundanceSpec, metrics, blockId) {
 				domain: maps.merge(
 					abundanceSpec.axesSpec[0].domain,
 					{
-						"pl7.app/overlap" : "left"
+						"pl7.app/overlap": "left"
 					}
 				),
 				annotations: {
-					"pl7.app/label": "Sample 1",
-					"pl7.app/overlap" : "left"
-					}
-				}
-			},
-			{
-				column: "sample2",
-				spec: {
-					name: "pl7.app/sampleId",
-					type: "String",
-					domain: maps.merge(
-						abundanceSpec.axesSpec[0].domain,
-						{
-							"pl7.app/overlap" : "right"
-						}
-					),
-					annotations: {
-						"pl7.app/label": "Sample 2",
-						"pl7.app/overlap" : "right"
-					}
+					"pl7.app/label": "Sample 1"
 				}
 			}
-		], 
-		columns: columns,
+		},
+		{
+			column: "sample2",
+			spec: {
+				name: "pl7.app/sampleId",
+				type: "String",
+				domain: maps.merge(
+					abundanceSpec.axesSpec[0].domain,
+					{
+						"pl7.app/overlap": "right"
+					}
+				),
+				annotations: {
+					"pl7.app/label": "Sample 2"
+				}
+			}
+		},
+		{
+			column: "metric",
+			spec: {
+				name:"pl7.app/vdj/overlapMetric",
+				type: "String",
+				domain: abundanceSpec.axesSpec[0].domain,
+				annotations: {
+					"pl7.app/label": "Overlap Metric"
+				}
+			}
+		}],
+		columns: [{
+			column: "value",
+			spec: {
+				name: "pl7.app/vdj/overlap",
+				valueType: "Float",
+				domain: maps.merge(
+					abundanceSpec.domain,
+					{
+						"pl7.app/downsampling": canonical.encode(metrics[0].downsampling)
+					}
+				),
+				annotations: {
+					"pl7.app/label": "Value"
+				}
+			}
+		}],
 		storageFormat: "Binary",
 		partitionKeyLength: 0
 	}
@@ -125,27 +126,46 @@ wf.body(func(args) {
 	sequences := columns.getColumns("sequences")
 	genes := columns.getColumns("genes")
 	abundanceSpec := columns.getSpec(args.abundanceRef)
+	isSingleCell := abundanceSpec.axesSpec[1].name == "pl7.app/vdj/scClonotypeKey"
 	table := pframes.tsvFileBuilder()
 
 	table.setAxisHeader("pl7.app/sampleId", "sampleId")
 	table.add(columns.getColumn(args.abundanceRef), {header: "count"})
 
 	for seqColumn in sequences {
-		table.add(seqColumn, {header: seqColumn.spec.annotations["pl7.app/label"]})
+		if isSingleCell {
+			if seqColumn.spec.domain["pl7.app/vdj/scClonotypeChain/index"] == "primary" {
+				chain := seqColumn.spec.domain["pl7.app/vdj/scClonotypeChain"]
+				alphabet := seqColumn.spec.domain["pl7.app/alphabet"]
+				alphabetShort := (alphabet == "aminoacid") ? "aa" : "nt"
+				table.add(seqColumn, {header: "CDR3 " + alphabetShort + " " + chain})
+			}
+		} else {
+			table.add(seqColumn, {header: seqColumn.spec.annotations["pl7.app/label"]})
+		}
 	}
 
 	for geneColumn in genes {
 		if geneColumn.spec.domain["pl7.app/vdj/reference"] == "VGene" || geneColumn.spec.domain["pl7.app/vdj/reference"] == "JGene" {
-			table.add(geneColumn, {header: geneColumn.spec.domain["pl7.app/vdj/reference"]})
+			if isSingleCell {
+				if geneColumn.spec.domain["pl7.app/vdj/scClonotypeChain/index"] == "primary" {
+					chain := geneColumn.spec.domain["pl7.app/vdj/scClonotypeChain"]
+					table.add(columns.getColumn(geneColumn.key), {header: geneColumn.spec.domain["pl7.app/vdj/reference"] + " " + chain})
+				}
+			} else {
+				table.add(geneColumn, {header: geneColumn.spec.domain["pl7.app/vdj/reference"]})
+			}
 		}
 	}
-	
-	tsv := table.build()
 
-	ll.print("__THE_LOG__"+args.metrics)
+	table.mem("16GiB")
+	table.cpu(1)	
+	tsv := table.build()
 
 	runDistance := exec.builder().
 		software(distanceSw).
+		mem("16GiB").
+		cpu(1).
 		arg("-i").arg("input.tsv").
 		arg("-o1").arg("full_result.tsv").
 		arg("-o2").arg("unique_result.tsv").
@@ -161,42 +181,29 @@ wf.body(func(args) {
 	result := xsv.importFile(
 		distanceResult,
 		"tsv",
-		getSpecs(abundanceSpec, args.metrics, blockId),
-		{ splitDataAndSpec: true }
-	)
-	resultUnique := xsv.importFile(
-		distanceResultUnique,
-		"tsv",
-		getSpecs(abundanceSpec, args.metrics, blockId),
-		{ splitDataAndSpec: true }
+		getFullSpecs(abundanceSpec, args.metrics),
+		{ splitDataAndSpec: true, cpu: 1, mem: "16GiB" }
 	)
 
-	//trace := pSpec.makeTrace(
-	//	abundanceSpec,
-	//	{
-	//		type: "milaboratories.differential-repertoire-diversity",
-	//		id: blockId,
-	//		importance: 30, 
-	//		label: "Repertoire Diversity"
-	//	}
-	//)
+	trace := pSpec.makeTrace(
+		abundanceSpec,
+		{
+			type: "milaboratories.repertoire-distance",
+			id: blockId,
+			importance: 30, 
+			label: "Repertoire Distance 2"
+		}
+	)
 
 	pf := pframes.pFrameBuilder()
 	for id, v in result {
-		pf.add(id, v.spec, v.data)
+		pf.add(id, trace.inject(v.spec), v.data)
 	}
 	pf = pf.build()
 
-	pfUnique := pframes.pFrameBuilder()	
-	for id, v in resultUnique {
-		pfUnique.add(id, v.spec, v.data)
-	}
-	pfUnique = pfUnique.build()
-
 	return {
 		outputs: {
-			pf: pframes.exportFrame(pf),
-			pfUnique: pframes.exportFrame(pfUnique)
+			pf: pframes.exportFrame(pf)
 		},
 		exports: {}
 	}

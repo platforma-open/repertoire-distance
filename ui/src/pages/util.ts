@@ -1,17 +1,20 @@
-export const metricTypeOptions = [
-  { value: 'F1', label: 'F1 metric' },
-  { value: 'F2', label: 'F2 metric' },
-  { value: 'D', label: 'D metric' },
-  { value: 'sharedClonotypes', label: 'Shared Clonotypes' },
-  { value: 'correlation', label: 'Correlation' },
-  { value: 'jaccard', label: 'Jaccard' },
-];
+import type { DistanceType } from '@platforma-open/milaboratories.repertoire-distance-2.model';
 
-const labelsMap = (() => {
-  const map: Map<string, string> = new Map();
-  for (const option of metricTypeOptions) {
-    map.set(option.value, option.label);
+export function getMetricLabel(type: DistanceType): string {
+  switch (type) {
+    case 'F1':
+      return 'F1 Overlap';
+    case 'F2':
+      return 'F2 Overlap';
+    case 'D':
+      return 'D Distance';
+    case 'sharedClonotypes':
+      return 'Shared Clonotypes';
+    case 'correlation':
+      return 'Correlation';
+    case 'jaccard':
+      return 'Jaccard Index';
+    default:
+      return 'Unknown Metric';
   }
-  return map;
-})();
-export const getMetricLabel = (value: string) => labelsMap.get(value);
+}

@@ -14,9 +14,13 @@
     "@platforma-open/milaboratories.repertoire-distance-2.model": "workspace:*",
     "@platforma-sdk/model": "catalog:",
     "@platforma-sdk/ui-vue": "catalog:",
+    "vue": "catalog:",
+    "@milaboratories/helpers": "catalog:",
     "@types/lodash.debounce": "^4.0.9",
+    "@types/lodash.once": "^4.1.9",
     "lodash.debounce": "^4.0.8",
-    "vue": "catalog:"
+    "lodash.once": "^4.1.1",
+    "@vueuse/core": "catalog:"
   },
   "devDependencies": {
     "@platforma-sdk/eslint-config": "catalog:",

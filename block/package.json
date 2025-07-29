@@ -25,7 +25,7 @@
       "ui": "@platforma-open/milaboratories.repertoire-distance-2.ui/dist"
     },
     "meta": {
-      "title": "Repertoire Distance 2",
+      "title": "Repertoire Distance",
       "logo": "file:../logos/block-logo.png",
       "url": "https://github.com/platforma-open/milaboratories.repertoire-distance-2",
       "support": "mailto:support@milaboratories.com",
