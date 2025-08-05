@@ -1,5 +1,11 @@
 # @platforma-open/milaboratories.repertoire-distance
 
+## 2.1.0
+
+### Minor Changes
+
+- 1ce19bd: bump version
+
 ## 1.3.0
 
 ### Minor Changes
