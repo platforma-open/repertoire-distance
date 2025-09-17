@@ -1,5 +1,12 @@
 # @platforma-open/milaboratories.repertoire-distance.workflow
 
+## 1.2.2
+
+### Patch Changes
+
+- Updated dependencies [63c9e46]
+  - @platforma-open/milaboratories.repertoire-distance-2.software@1.2.2
+
 ## 1.2.1
 
 ### Patch Changes

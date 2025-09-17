@@ -1,5 +1,13 @@
 # @platforma-open/milaboratories.repertoire-distance.ui
 
+## 1.3.2
+
+### Patch Changes
+
+- 63c9e46: Full SDK and python update
+- Updated dependencies [63c9e46]
+  - @platforma-open/milaboratories.repertoire-distance-2.model@1.3.2
+
 ## 1.3.1
 
 ### Patch Changes
