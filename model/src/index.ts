@@ -1,7 +1,7 @@
 import type { InferOutputsType, PColumnIdAndSpec } from '@platforma-sdk/model';
 import { BlockModel, createPFrameForGraphs, isPColumnSpec } from '@platforma-sdk/model';
 import type { BlockArgs, UiState } from './types';
-import { createDefaultUiState, createDefaultMetricUis } from './uiState';
+import { createDefaultMetricUis, createDefaultUiState } from './uiState';
 
 export * from './types';
 export * from './uiState';
@@ -14,7 +14,9 @@ export const model = BlockModel.create()
   .withUiState<UiState>(createDefaultUiState())
 
   .argsValid((ctx) =>
-    ctx.args.abundanceRef !== undefined,
+    ctx.args.abundanceRef !== undefined
+    && ctx.args.metrics.every((metric) => metric.type !== undefined)
+    && ctx.args.metrics.every((metric) => metric.intersection !== undefined),
   )
 
   .output('abundanceOptions', (ctx) =>
@@ -82,6 +84,6 @@ export const model = BlockModel.create()
     // { type: 'link', href: '/distanceGraph', label: 'Distance Graph' },
   ])
 
-  .done();
+  .done(2);
 
 export type BlockOutputs = InferOutputsType<typeof model>;
