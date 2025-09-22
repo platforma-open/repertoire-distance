@@ -1,5 +1,13 @@
 # @platforma-open/milaboratories.repertoire-distance.ui
 
+## 1.3.3
+
+### Patch Changes
+
+- ac55307: technical release
+- Updated dependencies [ac55307]
+  - @platforma-open/milaboratories.repertoire-distance-2.model@1.3.3
+
 ## 1.3.2
 
 ### Patch Changes
