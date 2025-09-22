@@ -150,7 +150,7 @@ importers:
   test:
     dependencies:
       this-block:
-        specifier: workspace:@platforma-open/milaboratories.repertoire-distance-2@^
+        specifier: workspace:@platforma-open/milaboratories.repertoire-distance-2@*
         version: link:../block
     devDependencies:
       '@platforma-sdk/test':
