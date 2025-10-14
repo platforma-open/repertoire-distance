@@ -1,5 +1,14 @@
 # @platforma-open/milaboratories.repertoire-distance.software
 
+## 1.2.4
+
+### Patch Changes
+
+- 94b4deb: technical release
+- 988e7a6: technical release
+- d9d3773: technical release
+- fcac88a: technical release
+
 ## 1.2.3
 
 ### Patch Changes

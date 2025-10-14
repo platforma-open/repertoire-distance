@@ -1,5 +1,19 @@
 # @platforma-open/milaboratories.repertoire-distance.ui
 
+## 1.3.4
+
+### Patch Changes
+
+- 94b4deb: technical release
+- 988e7a6: technical release
+- d9d3773: technical release
+- fcac88a: technical release
+- Updated dependencies [94b4deb]
+- Updated dependencies [988e7a6]
+- Updated dependencies [d9d3773]
+- Updated dependencies [fcac88a]
+  - @platforma-open/milaboratories.repertoire-distance-2.model@1.3.4
+
 ## 1.3.3
 
 ### Patch Changes
