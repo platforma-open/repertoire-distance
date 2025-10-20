@@ -7,16 +7,16 @@ packages:
   - block
 
 catalog:
-  "@platforma-sdk/model": ^1.42.16
-  "@platforma-sdk/ui-vue": ^1.42.15
-  "@platforma-sdk/workflow-tengo": ^4.18.1
-  "@platforma-sdk/block-tools": ^2.5.81
-  "@platforma-sdk/test": ^1.42.15
-  "@platforma-sdk/tengo-builder": ^2.1.14
-  "@platforma-sdk/package-builder": ^2.16.2
-  "@platforma-sdk/eslint-config": ^1.0.3
-  "@milaboratories/graph-maker": ^1.1.141
-  "@milaboratories/helpers": ^1.6.19
+  "@platforma-sdk/model": ^1.44.14
+  "@platforma-sdk/ui-vue": ^1.44.14
+  "@platforma-sdk/workflow-tengo": ^5.3.8
+  "@platforma-sdk/block-tools": ^2.6.15
+  "@platforma-sdk/test": ^1.44.14
+  "@platforma-sdk/tengo-builder": ^2.3.2
+  "@platforma-sdk/package-builder": ^3.9.0
+  "@platforma-sdk/eslint-config": ^1.1.0
+  "@milaboratories/graph-maker": ^1.1.170
+  "@milaboratories/helpers": ^1.12.0
   "@vueuse/core": ^13.3.0
 
 
