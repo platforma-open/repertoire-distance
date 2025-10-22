@@ -1,5 +1,34 @@
 # @platforma-open/milaboratories.repertoire-distance.workflow
 
+## 1.2.4
+
+### Patch Changes
+
+- 94b4deb: technical release
+- 988e7a6: technical release
+- d9d3773: technical release
+- fcac88a: technical release
+- Updated dependencies [94b4deb]
+- Updated dependencies [988e7a6]
+- Updated dependencies [d9d3773]
+- Updated dependencies [fcac88a]
+  - @platforma-open/milaboratories.repertoire-distance-2.software@1.2.4
+
+## 1.2.3
+
+### Patch Changes
+
+- ac55307: technical release
+- Updated dependencies [ac55307]
+  - @platforma-open/milaboratories.repertoire-distance-2.software@1.2.3
+
+## 1.2.2
+
+### Patch Changes
+
+- Updated dependencies [63c9e46]
+  - @platforma-open/milaboratories.repertoire-distance-2.software@1.2.2
+
 ## 1.2.1
 
 ### Patch Changes

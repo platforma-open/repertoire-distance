@@ -1,5 +1,20 @@
 # @platforma-open/milaboratories.repertoire-distance.test
 
+## 2.1.4
+
+### Patch Changes
+
+- 94b4deb: technical release
+- 988e7a6: technical release
+- d9d3773: technical release
+- fcac88a: technical release
+
+## 2.1.3
+
+### Patch Changes
+
+- ac55307: technical release
+
 ## 2.1.2
 
 ### Patch Changes
