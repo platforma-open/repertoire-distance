@@ -1,5 +1,11 @@
 # @platforma-open/milaboratories.repertoire-distance.workflow
 
+## 1.2.5
+
+### Patch Changes
+
+- ae72dd6: Support parquet format (update SDK)
+
 ## 1.2.4
 
 ### Patch Changes
