@@ -88,11 +88,11 @@ getFullSpecs := func(abundanceSpec, metrics) {
 					}
 				),
 				annotations: {
-					"pl7.app/label": "Value"
+					"pl7.app/label": "Repertoire distance"
 				}
 			}
 		}],
-		storageFormat: "Binary",
+		storageFormat: "Parquet",
 		partitionKeyLength: 0
 	}
 }
@@ -205,7 +205,9 @@ wf.body(func(args) {
 		outputs: {
 			pf: pframes.exportFrame(pf)
 		},
-		exports: {}
+		exports: {
+			pf: pf
+		}
 	}
 })
 
