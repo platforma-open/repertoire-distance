@@ -1,5 +1,11 @@
 # @platforma-open/milaboratories.repertoire-distance.ui
 
+## 1.3.5
+
+### Patch Changes
+
+- 933e495: update graph-maker version
+
 ## 1.3.4
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@platforma-open/milaboratories.repertoire-distance-2.ui",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
