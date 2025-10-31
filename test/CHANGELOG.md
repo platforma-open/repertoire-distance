@@ -1,5 +1,11 @@
 # @platforma-open/milaboratories.repertoire-distance.test
 
+## 2.1.5
+
+### Patch Changes
+
+- a664fc5: SDK update
+
 ## 2.1.4
 
 ### Patch Changes

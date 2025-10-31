@@ -1,5 +1,15 @@
 # @platforma-open/milaboratories.repertoire-distance
 
+## 2.1.7
+
+### Patch Changes
+
+- a664fc5: SDK update
+- Updated dependencies [a664fc5]
+  - @platforma-open/milaboratories.repertoire-distance-2.model@1.3.5
+  - @platforma-open/milaboratories.repertoire-distance-2.ui@1.3.6
+  - @platforma-open/milaboratories.repertoire-distance-2.workflow@1.2.6
+
 ## 2.1.6
 
 ### Patch Changes

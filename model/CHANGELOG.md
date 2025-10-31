@@ -1,5 +1,11 @@
 # @platforma-open/milaboratories.repertoire-distance.model
 
+## 1.3.5
+
+### Patch Changes
+
+- a664fc5: SDK update
+
 ## 1.3.4
 
 ### Patch Changes
