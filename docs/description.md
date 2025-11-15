@@ -1,26 +1,5 @@
 # Overview
 
-Repertoire Distance computes pairwise similarity between immune receptor repertoires (bulk or single‑cell dual‑chain) using configurable overlap metrics and clonotype intersection definitions.
+Calculates pairwise similarity distances between immune receptor repertoires (TCR or BCR, bulk or single-cell) to quantify how similar or different repertoires are across samples, experimental conditions, or time points. The block computes all-versus-all pairwise comparisons using configurable overlap metrics that measure different aspects of repertoire similarity, enabling identification of samples with similar clonotype composition, tracking repertoire changes over time, or clustering samples based on repertoire similarity.
 
-**Metrics (similarity)**
-All metrics return higher values for more similar repertoires. Self‑pairs return 1.0. The following metric types are supported:
-- F1: sqrt(sum(f1) * sum(f2)) over shared clonotypes.
-- F2: sum(sqrt(f1 * f2)) over shared clonotypes.
-- jaccard: |A ∩ B| / |A ∪ B| on the set of clonotypes.
-- D: |A ∩ B| / |A| · |B| on the set of clonotypes.
-- correlation: Pearson correlation of clone fractions on the shared clonotypes.
-- sharedClonotypes: count of shared clonotypes.
-
-**Intersection definitions (what is a “clonotype”)**
-Choose how clonotypes are aligned between samples:
-- CDR3nt
-- CDR3aa
-- CDR3ntVJ (CDR3 + V + J)
-- CDR3aaVJ (CDR3 + V + J)
-
-**Downsampling options**
-Applied per‑metric before similarity is computed:
-- none
-- top: keep top N clonotypes by reads per sample
-- cumtop: keep top N percent of cumulative reads per sample
-- hypergeometric: equalize read depth across samples using multivariate hypergeometric sampling
+The block supports multiple similarity metrics including F1 and F2 scores, Jaccard index, Pearson correlation, and shared clonotype counts. Clonotypes can be aligned between samples using different intersection definitions (CDR3 nucleotide or amino acid sequences, with or without V and J gene information), allowing flexible comparison strategies. To ensure fair comparisons between samples with different sequencing depths, the block supports downsampling methods including selecting top clonotypes or statistically downsampling to a common size using hypergeometric sampling before calculating similarity metrics.

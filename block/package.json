@@ -27,9 +27,9 @@
     "meta": {
       "title": "Repertoire Distance",
       "logo": "file:../logos/block-logo.png",
-      "url": "https://github.com/platforma-open/milaboratories.repertoire-distance-2",
+      "url": "https://github.com/platforma-open/repertoire-distance",
       "support": "mailto:support@milaboratories.com",
-      "description": "Calculates an all-versus-all pairwise distance using a set of repertoire similarity measures.",
+      "description": "Calculates pairwise similarity distances between immune receptor repertoires using configurable overlap metrics (F1, F2, Jaccard, correlation) to compare repertoire composition across samples.",
       "longDescription": "file:../docs/description.md",
       "changelog": "file:../CHANGELOG.md",
       "tags": [
