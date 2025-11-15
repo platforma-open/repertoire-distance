@@ -1,5 +1,11 @@
 # @platforma-open/milaboratories.repertoire-distance
 
+## 2.1.8
+
+### Patch Changes
+
+- 50547c3: Block metadata updated
+
 ## 2.1.7
 
 ### Patch Changes
