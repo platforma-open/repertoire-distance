@@ -13,8 +13,8 @@ catalogs:
       specifier: ^1.1.74
       version: 1.1.74
     '@platforma-open/milaboratories.runenv-python-3':
-      specifier: ^1.1.16
-      version: 1.1.16
+      specifier: ^1.1.14
+      version: 1.1.14
     '@platforma-sdk/block-tools':
       specifier: ^2.5.38
       version: 2.5.38
@@ -132,7 +132,7 @@ importers:
     dependencies:
       '@platforma-open/milaboratories.runenv-python-3':
         specifier: 'catalog:'
-        version: 1.1.16
+        version: 1.1.14
     devDependencies:
       '@platforma-sdk/package-builder':
         specifier: 'catalog:'
@@ -1179,8 +1179,8 @@ packages:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
 
-  '@platforma-open/milaboratories.runenv-python-3@1.1.16':
-    resolution: {integrity: sha512-A46M7cK1uVW4itLjXX9nodZm97ETcDBDQPQpBsPmu+Wjy8wlyHxUUH/v8KvtW45gNcW+yNO0LvzqE0u4GL86Jg==}
+  '@platforma-open/milaboratories.runenv-python-3@1.1.14':
+    resolution: {integrity: sha512-W05sFGFh+k+x+tLibJFbd4AFHE1fsXeFCBJWvGCbG5P/VWdpZBT5DZnAna3FRr83a5t+w6Or2dZ6uxd/5+Fcng==}
 
   '@platforma-open/milaboratories.software-small-binaries.guided-command@1.0.4':
     resolution: {integrity: sha512-LD8XQDnR+L9oRD7JXE0VWGmv1/0cm+J71flrwBUWeIbuaenPC8Nsza8oy7JjLJ8AX+bm8XAyyJALuqBBqkL95Q==}
@@ -6595,7 +6595,7 @@ snapshots:
       '@milaboratories/ts-helpers': 1.1.5
       '@platforma-sdk/block-tools': 2.5.38
       '@platforma-sdk/model': 1.29.17
-      '@platforma-sdk/workflow-tengo': ^5.6.3
+      '@platforma-sdk/workflow-tengo': 4.1.2
       canonicalize: 2.1.0
       denque: 2.1.0
       lru-cache: 11.1.0
@@ -6709,7 +6709,7 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@platforma-open/milaboratories.runenv-python-3@1.1.16': {}
+  '@platforma-open/milaboratories.runenv-python-3@1.1.14': {}
 
   '@platforma-open/milaboratories.software-small-binaries.guided-command@1.0.4': {}
 
