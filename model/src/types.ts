@@ -26,4 +26,5 @@ export type BlockArgs = {
 export type UiState = {
   blockTitle: string;
   graphState: GraphMakerState;
+  fractionsState: GraphMakerState;
 };

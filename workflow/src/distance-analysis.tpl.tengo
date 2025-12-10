@@ -1,0 +1,46 @@
+self := import("@platforma-sdk/workflow-tengo:tpl")
+exec := import("@platforma-sdk/workflow-tengo:exec")
+assets:= import("@platforma-sdk/workflow-tengo:assets")
+json := import("json")
+
+distanceSw := assets.importSoftware("@platforma-open/milaboratories.repertoire-distance-2.software:main")
+
+self.validateInputs({
+	"__options__,closed": "",
+    inputTsv: "any",
+	metrics: "any"
+})
+
+self.defineOutputs("distanceResult", "distanceResultUnique", "sampleIds")
+
+self.body(func(inputs) {
+
+	metricsJson := json.encode(inputs.metrics)
+	inputTsv := inputs.inputTsv
+
+	runDistance := exec.builder().
+		software(distanceSw).
+		mem("16GiB").
+		cpu(1).
+		arg("-i").arg("input.tsv").
+		arg("-o1").arg("full_result.tsv").
+		arg("-o2").arg("unique_result.tsv").
+		arg("--output-samples").arg("sample_ids.tsv").
+		writeFile("metrics.json", metricsJson).
+		arg("-j").arg("metrics.json").
+		addFile("input.tsv", inputTsv).
+		saveFile("full_result.tsv").
+		saveFile("unique_result.tsv").
+		saveFileContent("sample_ids.tsv").
+		run()
+
+	distanceResult := runDistance.getFile("full_result.tsv")
+	distanceResultUnique := runDistance.getFile("unique_result.tsv")
+	sampleIds := runDistance.getFileContent("sample_ids.tsv")
+
+    return {
+        distanceResult: distanceResult,
+		distanceResultUnique: distanceResultUnique,
+		sampleIds: sampleIds
+    }
+})

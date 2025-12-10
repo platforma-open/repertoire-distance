@@ -9,9 +9,11 @@ canonical := import("@platforma-sdk/workflow-tengo:canonical")
 pSpec := import("@platforma-sdk/workflow-tengo:pframes.spec")
 self := import("@platforma-sdk/workflow-tengo:tpl")
 maps := import("@platforma-sdk/workflow-tengo:maps")
-json := import("json")
+render := import("@platforma-sdk/workflow-tengo:render")
 
-distanceSw := assets.importSoftware("@platforma-open/milaboratories.repertoire-distance-2.software:main")
+distanceTpl := assets.importTemplate(":distance-analysis")
+fractionTpl := assets.importTemplate(":fraction-analysis")
+fractionTableSpecsTpl := assets.importTemplate(":fraction-table-specs")
 
 self.awaitState("columnBundle", { wildcard: "*" }, "data", "InputsLocked")
 self.awaitState("columnBundle", { wildcard: "*" }, "spec", "ResourceReady")
@@ -113,7 +115,27 @@ wf.prepare(func(args) {
 		name: "pl7.app/vdj/geneHit",
 		axes: [{anchor: "main", idx: 1}]
 	}, "genes");
-	
+
+	// fraction columns for scatterplot
+	bundleBuilder.addSingle({
+		annotations: {
+			"pl7.app/abundance/isPrimary": "true",
+			"pl7.app/abundance/normalized": "true",
+			"pl7.app/isAbundance": "true"
+		},
+		axes: [{anchor: "main", idx: 0}, {anchor: "main", idx: 1}]
+	}, "fraction");
+
+	bundleBuilder.addSingle({
+		name: "pl7.app/label",
+		type: "String",
+		axes: [{anchor: "main", idx: 0}],
+		annotations: {
+			"pl7.app/isLabel": "true",
+			"pl7.app/label": "Sample"
+		}
+	}, "sampleLabels");
+
 	return  { 
 		columns: bundleBuilder.build()
 	}
@@ -158,26 +180,21 @@ wf.body(func(args) {
 		}
 	}
 
+	table.add(columns.getColumn("sampleLabels"), {header: "sampleLabel"})
+
 	table.mem("16GiB")
 	table.cpu(1)	
 	tsv := table.build()
 
-	runDistance := exec.builder().
-		software(distanceSw).
-		mem("16GiB").
-		cpu(1).
-		arg("-i").arg("input.tsv").
-		arg("-o1").arg("full_result.tsv").
-		arg("-o2").arg("unique_result.tsv").
-		writeFile("metrics.json", json.encode(args.metrics)).
-		arg("-j").arg("metrics.json").
-		addFile("input.tsv", tsv).
-		saveFile("full_result.tsv").
-		saveFile("unique_result.tsv").
-		run()
+	distanceWorkflow := render.create(distanceTpl, {
+		inputTsv: tsv,
+		metrics: args.metrics
+	})
 
-	distanceResult := runDistance.getFile("full_result.tsv")
-	distanceResultUnique := runDistance.getFile("unique_result.tsv")
+	distanceResult := distanceWorkflow.output("distanceResult")
+	distanceResultUnique := distanceWorkflow.output("distanceResultUnique")
+	sampleIds := distanceWorkflow.output("sampleIds")
+
 	result := xsv.importFile(
 		distanceResult,
 		"tsv",
@@ -185,14 +202,16 @@ wf.body(func(args) {
 		{ splitDataAndSpec: true, cpu: 1, mem: "16GiB" }
 	)
 
-	trace := pSpec.makeTrace(
-		abundanceSpec,
-		{
+	traceStep := {
 			type: "milaboratories.repertoire-distance",
 			id: blockId,
-			importance: 30, 
+			importance: 30,
 			label: "Repertoire Distance 2"
 		}
+
+	trace := pSpec.makeTrace(
+		abundanceSpec,
+		traceStep
 	)
 
 	pf := pframes.pFrameBuilder()
@@ -201,9 +220,42 @@ wf.body(func(args) {
 	}
 	pf = pf.build()
 
+	// Prepare scatterplot p-frame
+	scatterTable := pframes.tsvFileBuilder()
+
+	scatterTable.setAxisHeader("pl7.app/sampleId", "sampleId")
+	scatterTable.add(columns.getColumn("sampleLabels"), {header: "sampleLabel"})
+	scatterTable.setAxisHeader(abundanceSpec.axesSpec[1].name, "clonotypeKey")
+	scatterTable.add(columns.getColumn("fraction"), {header: "fraction"})
+
+	scatterTable.mem("16GiB")
+	scatterTable.cpu(1)	
+	scatterTsv := scatterTable.build()
+
+	// Generate clonotype frequencies table
+	fractionWorkflow := render.create(fractionTpl, {
+		scatterTsv: scatterTsv
+	})
+
+	fractionTableTsv := fractionWorkflow.output("fractionTable")
+
+	// Import fraction table TSV and create pframe
+	fractionTableWorkflow := render.createEphemeral(fractionTableSpecsTpl, {
+		sampleIds: sampleIds,
+		clonotypeSpec: abundanceSpec.axesSpec[1],
+		abundanceSpec: abundanceSpec,
+		fractionTable: fractionTableTsv,
+		traceStep: traceStep
+	})
+
+	fractionSpecs := fractionTableWorkflow.output("fractionSpecs")
+
+
+
 	return {
 		outputs: {
-			pf: pframes.exportFrame(pf)
+			pf: pframes.exportFrame(pf),
+			fractionSpecs: pframes.exportFrame(fractionSpecs)
 		},
 		exports: {
 			pf: pf

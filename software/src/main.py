@@ -229,7 +229,7 @@ def compute_metrics_wide(df_original, metric_configs, is_single_cell_data):
 
 
 # ---------- Empty Output Creation ----------
-def create_empty_outputs(metric_configs, output_full_path, output_unique_path, sep):
+def create_empty_outputs(metric_configs, output_full_path, output_unique_path, sep, output_samples):
     """
     Create empty output files with correct column structure when input is empty
     """
@@ -247,6 +247,11 @@ def create_empty_outputs(metric_configs, output_full_path, output_unique_path, s
     # Save empty files
     empty_long_df.to_csv(output_full_path, index=False, sep=sep)
     empty_wide_df.to_csv(output_unique_path, index=False, sep=sep)
+
+    # Create empty samples file if requested
+    if output_samples:
+        with open(output_samples, 'w') as f:
+            f.write()
     
     print("Empty input detected. Created empty output files with correct column structure.")
 
@@ -258,6 +263,7 @@ def main():
     parser.add_argument('-j', '--json', required=True, help="JSON config: [{intersection: ..., type: ..., downsampling: ...}]")
     parser.add_argument('-o1', '--output_full', required=True, help="Output CSV file with all sample pairs (matrix-friendly)")
     parser.add_argument('-o2', '--output_unique', required=True, help="Output CSV file with unique sample pairs only")
+    parser.add_argument('--output-samples', help="Output file for comma-separated sample IDs")
     parser.add_argument('--sep', default=None, help="Field separator (default auto-detect: CSV=',' or TSV='\\t')")
 
     args = parser.parse_args()
@@ -272,15 +278,21 @@ def main():
         df = pd.read_csv(args.input, sep=sep)
         if df.empty:
             # Create empty output files with correct column structure
-            create_empty_outputs(metric_configs, args.output_full, args.output_unique, sep)
+            create_empty_outputs(metric_configs, args.output_full, args.output_unique, sep, args.output_samples)
             return
     except (pd.errors.EmptyDataError, FileNotFoundError):
         # Handle empty file or file not found
-        create_empty_outputs(metric_configs, args.output_full, args.output_unique, sep)
+        create_empty_outputs(metric_configs, args.output_full, args.output_unique, sep, args.output_samples)
         return
 
     # Clean and normalize column names
     df.columns = [col.strip().replace('"', '').replace(' ', '') for col in df.columns]
+
+    # Save sample IDs if output path is provided
+    if args.output_samples:
+        sample_ids = sorted(df['sampleLabel'].unique())
+        with open(args.output_samples, 'w') as f:
+            f.write(','.join(map(str, sample_ids)))
     
     # Attempt to detect if it's single-cell dual-chain data based on column presence
     # Check for both A and B chain columns to ensure complete single-cell data

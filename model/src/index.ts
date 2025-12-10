@@ -75,6 +75,27 @@ export const model = BlockModel.create()
     return ctx.createPTable({ columns: [overlapColumn] });
   })
 
+  .output('fractionsPf', (ctx) => {
+    const pCols = ctx.outputs?.resolve('fractionSpecs')?.getPColumns();
+    if (pCols === undefined) {
+      return undefined;
+    }
+    return createPFrameForGraphs(ctx, pCols);
+  })
+  .output('fractionsPCols', (ctx) => {
+    const pCols = ctx.outputs?.resolve('fractionSpecs')?.getPColumns();
+    if (pCols === undefined) {
+      return undefined;
+    }
+    return pCols.map(
+      (c) =>
+        ({
+          columnId: c.id,
+          spec: c.spec,
+        } satisfies PColumnIdAndSpec),
+    );
+  })
+
   .output('isRunning', (ctx) => ctx.outputs?.getIsReadyOrError() === false)
 
   .title((ctx) => ctx.uiState?.blockTitle ?? 'Repertoire Distance')
@@ -82,6 +103,7 @@ export const model = BlockModel.create()
   .sections((_) => [
     { type: 'link', href: '/', label: 'Distance Graph' },
     // { type: 'link', href: '/distanceGraph', label: 'Distance Graph' },
+    { type: 'link', href: '/fractions', label: 'Clonotype Fractions' },
   ])
 
   .done(2);

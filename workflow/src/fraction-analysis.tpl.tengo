@@ -1,0 +1,38 @@
+self := import("@platforma-sdk/workflow-tengo:tpl")
+exec := import("@platforma-sdk/workflow-tengo:exec")
+assets:= import("@platforma-sdk/workflow-tengo:assets")
+ll := import("@platforma-sdk/workflow-tengo:ll")
+json := import("json")
+text := import("text")
+
+getFractionsSw := assets.importSoftware("@platforma-open/milaboratories.repertoire-distance-2.software:getFractions")
+distanceSw := assets.importSoftware("@platforma-open/milaboratories.repertoire-distance-2.software:main")
+
+
+self.validateInputs({
+	"__options__,closed": "",
+    scatterTsv: "any"
+})
+
+self.defineOutputs("fractionTable")
+
+self.body(func(inputs) {
+	scatterTsv := inputs.scatterTsv
+	
+	// Generate a file with clonotype (Y axis) fractions (value) per sample (column)
+	fractionTableBuilder := exec.builder().
+		software(getFractionsSw).
+		mem("16GiB").
+		cpu(1).
+		arg("-i").arg("input.tsv").
+		arg("-o").arg("fractions.tsv").
+		addFile("input.tsv", scatterTsv).
+		saveFile("fractions.tsv").
+		run()
+
+	fractionTable := fractionTableBuilder.getFile("fractions.tsv")
+
+    return {
+        fractionTable: fractionTable
+    }
+})

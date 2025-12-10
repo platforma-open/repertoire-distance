@@ -1,4 +1,4 @@
-import type { UiState, Metric } from './types';
+import type { Metric, UiState } from './types';
 
 export const createDefaultUiState = (): UiState => {
   return {
@@ -10,6 +10,18 @@ export const createDefaultUiState = (): UiState => {
       layersSettings: {
         heatmapClustered: {
           normalizationDirection: null,
+        },
+      },
+    },
+    fractionsState: {
+      title: 'Fractions Scatterplot',
+      template: 'dots',
+      currentTab: 'dataMapping',
+      statisticsSettings: {
+        trend: {
+          on: true,
+          showLegend: true,
+          trim: false,
         },
       },
     },
@@ -79,4 +91,4 @@ export const createDefaultMetricUis = (): Metric[] => {
       isExpanded: false,
     },
   ];
-}; 
+};

@@ -1,0 +1,82 @@
+self := import("@platforma-sdk/workflow-tengo:tpl")
+text := import("text")
+strings := import("@platforma-sdk/workflow-tengo:strings")
+xsv := import("@platforma-sdk/workflow-tengo:pframes.xsv")
+pframes := import("@platforma-sdk/workflow-tengo:pframes")
+pSpec := import("@platforma-sdk/workflow-tengo:pframes.spec")
+maps := import("@platforma-sdk/workflow-tengo:maps")
+
+self.awaitState("sampleIds", "ResourceReady")
+self.awaitState("clonotypeSpec", "ResourceReady")
+self.awaitState("abundanceSpec", "ResourceReady")
+self.awaitState("traceStep", "ResourceReady")
+
+self.body(func(inputs) {
+	sampleIdsData := inputs.sampleIds.getData()
+	sampleIdsList := text.split(sampleIdsData, ",")
+	
+	// Create columns for each sampleId
+	// Note: column name should match the TSV header from getFractions.py
+	sampleColumns := []
+	for sampleId in sampleIdsList {
+		// Use sampleId as-is for column name to match TSV output
+		// Use substituted version for internal ID
+		columnId := strings.substituteSpecialCharacters(sampleId)
+		sampleColumns = append(sampleColumns, {
+			column: sampleId,
+			id: columnId,
+			spec: {
+				name: "pl7.app/vdj/fraction",
+				valueType: "Float",
+				domain: {
+					"pl7.app/sampleId": sampleId
+				},
+				annotations: {
+					"pl7.app/label": sampleId,
+					"pl7.app/isAbundance": "true",
+					"pl7.app/abundance/normalized": "true"
+				}
+			}
+		})
+	}
+	
+	// Build the fraction table specs with clonotypeKey axis
+	// The TSV has "clonotypeKey" as the column name
+	clonotypeKeyAxisSpec := {
+		column: "clonotypeKey",
+		spec: inputs.clonotypeSpec
+	}
+	
+	fractionTableSpecs := {
+		axes: [clonotypeKeyAxisSpec],
+		columns: sampleColumns,
+		storageFormat: "Parquet",
+		partitionKeyLength: 0
+	}
+	
+	// Import the fraction table TSV with the specs
+	importResults := xsv.importFile(
+		inputs.fractionTable,
+		"tsv",
+		fractionTableSpecs,
+		{ splitDataAndSpec: true, cpu: 1, mem: "16GiB" }
+	)
+	
+	// Reconstruct trace from abundanceSpec and traceStep
+	trace := pSpec.makeTrace(
+		inputs.abundanceSpec,
+		inputs.traceStep
+	)
+	
+	// Build the pframe
+	pfBuilder := pframes.pFrameBuilder()
+	for k, v in importResults {
+		pfBuilder.add(k, trace.inject(v.spec), v.data)
+	}
+	fractionTablePframe := pfBuilder.build()
+	
+	return {
+		fractionSpecs: fractionTablePframe
+	}
+})
+
