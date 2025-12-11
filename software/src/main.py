@@ -34,11 +34,6 @@ def filter_vdj_regions(df, is_single_cell_data):
     
     filtered_df = df[valid_mask].copy()
     
-    # Log filtering statistics
-    removed_count = len(df) - len(filtered_df)
-    if removed_count > 0:
-        print(f"Filtered out {removed_count} rows with invalid VDJ regions (empty/null or 'region_not_covered')")
-    
     return filtered_df
 
 # ---------- Downsampling ----------
@@ -76,7 +71,7 @@ def downsample_df(df, downsampling_config):
 
         rng = default_rng(12345)
         downsampled = []
-        for sid in df['sampleId'].unique():
+        for sid in sorted(df['sampleId'].unique()):
             sample_df = df[df['sampleId'] == sid]
             counts = sample_df['numberOfreads'].values
             sampled_counts = rng.multivariate_hypergeometric(counts, min_reads) if counts.sum() > min_reads else counts
@@ -133,8 +128,10 @@ def compute_metric(s1, s2, clones1, clones2, set1, set2, metric):
     if len(shared) == 0:
         return 0.0
 
-    f1 = np.array([clones1[k] for k in shared])
-    f2 = np.array([clones2[k] for k in shared])
+    # Sort shared keys to ensure deterministic ordering for correlation calculations
+    shared_sorted = sorted(shared)
+    f1 = np.array([clones1[k] for k in shared_sorted])
+    f2 = np.array([clones2[k] for k in shared_sorted])
 
     if metric == 'F1':
         return np.sqrt(f1.sum() * f2.sum())
@@ -174,7 +171,8 @@ def compute_metrics_wide(df_original, metric_configs, is_single_cell_data):
 
     results = {}
 
-    for (intersection, downsampling_json), metric_list in metrics_by_config.items():
+    # Sort config keys to ensure deterministic processing order
+    for (intersection, downsampling_json), metric_list in sorted(metrics_by_config.items()):
         # Parse the downsampling config
         downsampling_config = json.loads(downsampling_json)
         
@@ -192,10 +190,14 @@ def compute_metrics_wide(df_original, metric_configs, is_single_cell_data):
         df['cloneKey'] = df.apply(lambda row: make_clone_key(row, intersection, is_single_cell_data), axis=1)
         df = df[['sampleId', 'cloneKey', 'fractionOfReads']].rename(columns={'fractionOfReads': 'cloneFraction'})
 
-        sample_clone_dict = {
-            sid: g.set_index('cloneKey')['cloneFraction'].to_dict()
-            for sid, g in df.groupby('sampleId')
-        }
+        # Build sample_clone_dict in deterministic order (sorted by sampleId)
+        sample_clone_dict = {}
+        for sid in sample_ids:
+            sample_df = df[df['sampleId'] == sid]
+            if len(sample_df) > 0:
+                sample_clone_dict[sid] = sample_df.set_index('cloneKey')['cloneFraction'].to_dict()
+            else:
+                sample_clone_dict[sid] = {}
         sample_cloneset_dict = {sid: set(clones.keys()) for sid, clones in sample_clone_dict.items()}
 
         for sid in sample_ids:
@@ -204,13 +206,15 @@ def compute_metrics_wide(df_original, metric_configs, is_single_cell_data):
             sample_cloneset_dict.setdefault(sid, set())
 
         # Step 2: compute each metric only once per unique unordered pair
-        metric_values = {metric: {} for metric, _ in metric_list}
+        # Sort metric_list by original index to ensure deterministic processing order
+        metric_list_sorted = sorted(metric_list, key=lambda x: x[1])
+        metric_values = {metric: {} for metric, _ in metric_list_sorted}
 
         for s1, s2 in unique_pairs:
             c1, c2 = sample_clone_dict[s1], sample_clone_dict[s2]
             set1, set2 = sample_cloneset_dict[s1], sample_cloneset_dict[s2]
 
-            for metric, _ in metric_list:
+            for metric, _ in metric_list_sorted:
                 val = compute_metric(s1, s2, c1, c2, set1, set2, metric)
                 metric_values[metric][(s1, s2)] = val
                 if s1 != s2:
@@ -221,7 +225,7 @@ def compute_metrics_wide(df_original, metric_configs, is_single_cell_data):
             key = (s1, s2)
             if key not in results:
                 results[key] = {'sample1': s1, 'sample2': s2}
-            for metric, _ in metric_list:
+            for metric, _ in metric_list_sorted:
                 metric_col = f"{metric} {intersection}"
                 results[key][metric_col] = metric_values[metric].get((s1, s2), 0.0)
 
@@ -229,26 +233,16 @@ def compute_metrics_wide(df_original, metric_configs, is_single_cell_data):
 
 
 # ---------- Empty Output Creation ----------
-def create_empty_outputs(metric_configs, output_full_path, output_unique_path, sep):
+def create_empty_outputs(metric_configs, output_full_path, sep):
     """
     Create empty output files with correct column structure when input is empty
     """
-    # Create metric column names for wide format
-    metric_columns = [f"{config['type']} {config['intersection']}" for config in metric_configs]
-    
-    # Create empty wide format DataFrame
-    wide_columns = ['sample1', 'sample2'] + metric_columns
-    empty_wide_df = pd.DataFrame(columns=wide_columns)
-    
     # Create empty long format DataFrame
     long_columns = ['sample1', 'sample2', 'metric', 'value']
     empty_long_df = pd.DataFrame(columns=long_columns)
     
-    # Save empty files
+    # Save empty file
     empty_long_df.to_csv(output_full_path, index=False, sep=sep)
-    empty_wide_df.to_csv(output_unique_path, index=False, sep=sep)
-    
-    print("Empty input detected. Created empty output files with correct column structure.")
 
 
 # ---------- CLI Entry ----------
@@ -257,7 +251,6 @@ def main():
     parser.add_argument('-i', '--input', required=True, help="Input TSV or CSV file")
     parser.add_argument('-j', '--json', required=True, help="JSON config: [{intersection: ..., type: ..., downsampling: ...}]")
     parser.add_argument('-o1', '--output_full', required=True, help="Output CSV file with all sample pairs (matrix-friendly)")
-    parser.add_argument('-o2', '--output_unique', required=True, help="Output CSV file with unique sample pairs only")
     parser.add_argument('--sep', default=None, help="Field separator (default auto-detect: CSV=',' or TSV='\\t')")
 
     args = parser.parse_args()
@@ -271,12 +264,12 @@ def main():
     try:
         df = pd.read_csv(args.input, sep=sep)
         if df.empty:
-            # Create empty output files with correct column structure
-            create_empty_outputs(metric_configs, args.output_full, args.output_unique, sep)
+            # Create empty output file with correct column structure
+            create_empty_outputs(metric_configs, args.output_full, sep)
             return
     except (pd.errors.EmptyDataError, FileNotFoundError):
         # Handle empty file or file not found
-        create_empty_outputs(metric_configs, args.output_full, args.output_unique, sep)
+        create_empty_outputs(metric_configs, args.output_full, sep)
         return
 
     # Clean and normalize column names
@@ -353,12 +346,6 @@ def main():
 
     # Save full version (long format)
     full_result_df.to_csv(args.output_full, index=False, sep='\t')
-
-    # Keep only (sample1 <= sample2) in wide format
-    unique_result_df = wide_result_df[
-        wide_result_df['sample1'] <= wide_result_df['sample2']
-    ].copy()
-    unique_result_df.to_csv(args.output_unique, index=False, sep='\t')
 
 
 if __name__ == '__main__':

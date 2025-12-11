@@ -1,7 +1,7 @@
 // "hello world"
 wf := import("@platforma-sdk/workflow-tengo:workflow")
-exec := import("@platforma-sdk/workflow-tengo:exec")
 assets:= import("@platforma-sdk/workflow-tengo:assets")
+render := import("@platforma-sdk/workflow-tengo:render")
 xsv := import("@platforma-sdk/workflow-tengo:pframes.xsv")
 ll := import("@platforma-sdk/workflow-tengo:ll")
 pframes := import("@platforma-sdk/workflow-tengo:pframes")
@@ -9,93 +9,19 @@ canonical := import("@platforma-sdk/workflow-tengo:canonical")
 pSpec := import("@platforma-sdk/workflow-tengo:pframes.spec")
 self := import("@platforma-sdk/workflow-tengo:tpl")
 maps := import("@platforma-sdk/workflow-tengo:maps")
+slices := import("@platforma-sdk/workflow-tengo:slices")
+anonymization := import("@platforma-sdk/workflow-tengo:anonymize")
+smart := import("@platforma-sdk/workflow-tengo:smart")
 json := import("json")
+times := import("times")
+helpers := import(":helpers")
 
-distanceSw := assets.importSoftware("@platforma-open/milaboratories.repertoire-distance-2.software:main")
+runDistanceTpl := assets.importTemplate(":run-distance")
+deanonimizationTpl := assets.importTemplate(":deanonimization")
+anonymizationTpl := assets.importTemplate(":anonymization")
 
 self.awaitState("columnBundle", { wildcard: "*" }, "data", "InputsLocked")
 self.awaitState("columnBundle", { wildcard: "*" }, "spec", "ResourceReady")
-
-getLabel := func(mt) {
-	if mt == "F1" {
-		return "F1 Score"
-	} else if mt == "F2" {
-		return "F2 Score"
-	} else if mt == "jaccard" {
-		return "Jaccard Index"
-	} else if mt == "D" {
-		return "D Score"
-	} else if mt == "correlation" {
-		return "Correlation"
-	}
-	return mt;
-}
-
-getFullSpecs := func(abundanceSpec, metrics) {
-	return {
-		axes: [{
-			column: "sample1",
-			spec: {
-				name: "pl7.app/sampleId",
-				type: "String",
-				domain: maps.merge(
-					abundanceSpec.axesSpec[0].domain,
-					{
-						"pl7.app/overlap": "left"
-					}
-				),
-				annotations: {
-					"pl7.app/label": "Sample 1"
-				}
-			}
-		},
-		{
-			column: "sample2",
-			spec: {
-				name: "pl7.app/sampleId",
-				type: "String",
-				domain: maps.merge(
-					abundanceSpec.axesSpec[0].domain,
-					{
-						"pl7.app/overlap": "right"
-					}
-				),
-				annotations: {
-					"pl7.app/label": "Sample 2"
-				}
-			}
-		},
-		{
-			column: "metric",
-			spec: {
-				name:"pl7.app/vdj/overlapMetric",
-				type: "String",
-				domain: abundanceSpec.axesSpec[0].domain,
-				annotations: {
-					"pl7.app/label": "Overlap Metric"
-				}
-			}
-		}],
-		columns: [{
-			column: "value",
-			spec: {
-				name: "pl7.app/vdj/overlap",
-				valueType: "Float",
-				domain: maps.merge(
-					abundanceSpec.domain,
-					{
-						"pl7.app/downsampling": canonical.encode(metrics[0].downsampling)
-					}
-				),
-				annotations: {
-					"pl7.app/label": "Repertoire distance"
-				}
-			}
-		}],
-		storageFormat: "Parquet",
-		partitionKeyLength: 0
-	}
-}
 
 wf.prepare(func(args) {
 	bundleBuilder := wf.createPBundleBuilder()
@@ -127,11 +53,23 @@ wf.body(func(args) {
 	genes := columns.getColumns("genes")
 	abundanceSpec := columns.getSpec(args.abundanceRef)
 	isSingleCell := abundanceSpec.axesSpec[1].name == "pl7.app/vdj/scClonotypeKey"
+	
+	// Anonymize sampleId axis (index 0) via dedicated template for dedup-friendly mapping reuse
+	abundanceColumn := columns.getColumn(args.abundanceRef)
+	anonymizationResult := render.create(anonymizationTpl, {
+		data: abundanceColumn.data,
+		pKeyIndices: [0]
+	})
+	anonymizedAbundanceData := anonymizationResult.output("anonymizedData")
+	mappingRef := anonymizationResult.output("mapping")
+	
 	table := pframes.tsvFileBuilder()
 
 	table.setAxisHeader("pl7.app/sampleId", "sampleId")
-	table.add(columns.getColumn(args.abundanceRef), {header: "count"})
+	table.add({ spec: abundanceColumn.spec, data: anonymizedAbundanceData }, {header: "count"})
 
+	// Sequences and genes share the same axes as abundance, so they will use the anonymized sampleId
+	// from the abundance column when the TSV is built
 	for seqColumn in sequences {
 		if isSingleCell {
 			if seqColumn.spec.domain["pl7.app/vdj/scClonotypeChain/index"] == "primary" {
@@ -162,26 +100,29 @@ wf.body(func(args) {
 	table.cpu(1)	
 	tsv := table.build()
 
-	runDistance := exec.builder().
-		software(distanceSw).
-		mem("16GiB").
-		cpu(1).
-		arg("-i").arg("input.tsv").
-		arg("-o1").arg("full_result.tsv").
-		arg("-o2").arg("unique_result.tsv").
-		writeFile("metrics.json", json.encode(args.metrics)).
-		arg("-j").arg("metrics.json").
-		addFile("input.tsv", tsv).
-		saveFile("full_result.tsv").
-		saveFile("unique_result.tsv").
-		run()
+	// Cache run-distance output; only this step should be deduped across identical tsv/metrics
+	runDistance := render.create(runDistanceTpl, {
+		tsv: tsv,
+		metrics: args.metrics
+	})
 
-	distanceResult := runDistance.getFile("full_result.tsv")
-	distanceResultUnique := runDistance.getFile("unique_result.tsv")
+	distanceResult := runDistance.output("fullResult")
+	
+	// Run deanonymization as ephemeral to avoid cross-project deduplication while keeping
+	// distance computation cached. This ensures mapping is applied per project.
+	deanonimization := render.createEphemeral(
+		deanonimizationTpl,
+		{
+			mapping: mappingRef,
+			runDistanceResult: distanceResult
+		}
+	)
+	deanonimizedTsv := deanonimization.output("deanonimizedTsv")
+	
 	result := xsv.importFile(
-		distanceResult,
+		deanonimizedTsv,
 		"tsv",
-		getFullSpecs(abundanceSpec, args.metrics),
+		helpers.getFullSpecs(abundanceSpec, args.metrics),
 		{ splitDataAndSpec: true, cpu: 1, mem: "16GiB" }
 	)
 
@@ -196,14 +137,19 @@ wf.body(func(args) {
 	)
 
 	pf := pframes.pFrameBuilder()
-	for id, v in result {
+	// Iterate in sorted key order for deterministic processing
+	// The TSV has already been deanonymized (sample1 and sample2 columns replaced with original values),
+	// so the result from xsv.importFile already contains the original sampleIds in the keys
+	for id in maps.getKeys(result) {
+		v := result[id]
 		pf.add(id, trace.inject(v.spec), v.data)
 	}
 	pf = pf.build()
 
 	return {
 		outputs: {
-			pf: pframes.exportFrame(pf)
+			pf: pframes.exportFrame(pf),
+			distanceResult: distanceResult
 		},
 		exports: {
 			pf: pf
