@@ -114,7 +114,8 @@ wf.body(func(args) {
 		deanonimizationTpl,
 		{
 			mapping: mappingRef,
-			runDistanceResult: distanceResult
+			runDistanceResult: distanceResult,
+			metrics: args.metrics
 		}
 	)
 	deanonimizedTsv := deanonimization.output("deanonimizedTsv")

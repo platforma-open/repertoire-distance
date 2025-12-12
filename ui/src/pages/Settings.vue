@@ -5,7 +5,7 @@ import { PlDropdownRef, PlElementList, PlBtnSecondary, PlAlert } from '@platform
 import { getRawPlatformaInstance } from '@platforma-sdk/model';
 import { asyncComputed } from '@vueuse/core';
 import { useApp } from '../app';
-import { getMetricLabel } from './util';
+import { getMetricDisplayName } from './util';
 import DistanceCard from './DistanceCard.vue';
 import { useMetrics } from './metrics';
 
@@ -49,9 +49,10 @@ const isEmpty = asyncComputed(async () => {
     :is-expanded="(item) => item.isExpanded === true"
     :on-expand="(item) => item.isExpanded = !item.isExpanded"
     :disable-dragging="true"
+    style="width: 360px; max-width: 100%;"
   >
     <template #item-title="{ item }">
-      {{ item.type ? getMetricLabel(item.type) : 'New Metric' }}
+      {{ getMetricDisplayName(item.type) }}
     </template>
     <template #item-content="{ index }">
       <DistanceCard v-model="metrics[index]" />

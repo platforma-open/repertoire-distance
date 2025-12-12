@@ -37,6 +37,49 @@ buildReplaceExpression := func(colExpr, mapping) {
 	return whenExpr.otherwise(colExpr)
 }
 
+getMetricLabel := func(mt) {
+	if mt == "F1" {
+		return "F1 overlap"
+	} else if mt == "F2" {
+		return "F2 overlap"
+	} else if mt == "jaccard" {
+		return "Jaccard index"
+	} else if mt == "D" {
+		return "D distance"
+	} else if mt == "correlation" {
+		return "Correlation"
+	} else if mt == "sharedClonotypes" {
+		return "Shared clonotypes"
+	}
+	return mt
+}
+
+getIntersectionLabel := func(intersection) {
+	if intersection == "CDR3ntVJ" {
+		return "CDR3 nucleotide + V/J genes"
+	} else if intersection == "CDR3aaVJ" {
+		return "CDR3 amino acid + V/J genes"
+	} else if intersection == "CDR3nt" {
+		return "CDR3 nucleotide only"
+	} else if intersection == "CDR3aa" {
+		return "CDR3 amino acid only"
+	}
+	return intersection
+}
+
+buildMetricMapping := func(metrics) {
+	mapping := {}
+	for m in metrics {
+		if is_undefined(m) || is_undefined(m.type) || is_undefined(m.intersection) {
+			continue
+		}
+		raw := m.type + " " + m.intersection
+		friendly := getMetricLabel(m.type) + " - " + getIntersectionLabel(m.intersection)
+		mapping[raw] = friendly
+	}
+	return mapping
+}
+
 self.body(func(args) {
 	// Get mapping JSON and print it
 	mappingJson := undefined
@@ -63,10 +106,14 @@ self.body(func(args) {
 			inferSchema: false
 		})
 		
-		// Replace values in sample1 and sample2 columns based on mapping
+		// Replace values in sample1, sample2, and metric columns based on mapping
 		df = df.withColumns(
 			buildReplaceExpression(pt.col("sample1"), mappingJson).alias("sample1"),
-			buildReplaceExpression(pt.col("sample2"), mappingJson).alias("sample2")
+			buildReplaceExpression(pt.col("sample2"), mappingJson).alias("sample2"),
+			buildReplaceExpression(
+				pt.col("metric"),
+				buildMetricMapping(is_undefined(args.metrics) ? [] : args.metrics)
+			).alias("metric")
 		)
 		
 		df.save("result.tsv")

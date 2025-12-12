@@ -4,19 +4,19 @@ import type { ListOption } from '@platforma-sdk/ui-vue';
 import { PlBtnGroup, PlDropdown, PlNumberField } from '@platforma-sdk/ui-vue';
 
 const metricTypeOptions: ListOption<string | undefined>[] = [
-  { label: 'F1 Overlap', value: 'F1' },
-  { label: 'F2 Overlap', value: 'F2' },
-  { label: 'D Distance', value: 'D' },
-  { label: 'Shared Clonotypes', value: 'sharedClonotypes' },
+  { label: 'F1 overlap', value: 'F1' },
+  { label: 'F2 overlap', value: 'F2' },
+  { label: 'D distance', value: 'D' },
+  { label: 'Shared clonotypes', value: 'sharedClonotypes' },
   { label: 'Correlation', value: 'correlation' },
-  { label: 'Jaccard Index', value: 'jaccard' },
+  { label: 'Jaccard index', value: 'jaccard' },
 ];
 
 const intersectionOptions: ListOption<string | undefined>[] = [
-  { label: 'CDR3nt|V|J', value: 'CDR3ntVJ' },
-  { label: 'CDR3aa|V|J', value: 'CDR3aaVJ' },
-  { label: 'CDR3nt', value: 'CDR3nt' },
-  { label: 'CDR3aa', value: 'CDR3aa' },
+  { label: 'CDR3 nucleotide + V/J genes', value: 'CDR3ntVJ' },
+  { label: 'CDR3 amino acid + V/J genes', value: 'CDR3aaVJ' },
+  { label: 'CDR3 nucleotide only', value: 'CDR3nt' },
+  { label: 'CDR3 amino acid only', value: 'CDR3aa' },
 ];
 
 const downsamplingOptions: ListOption<string | undefined>[] = [
@@ -84,7 +84,6 @@ const props = defineModel<Metric>({
       { value: 'fixed', label: 'Fixed' },
       { value: 'min', label: 'Min' },
       { value: 'auto', label: 'Auto' },
-      { value: 'max', label: 'Max' },
     ]"
   />
 

@@ -1,5 +1,4 @@
-import type { Ref } from 'vue';
-import { computed, watch } from 'vue';
+import { computed } from 'vue';
 import once from 'lodash.once';
 import type { Metric } from '@platforma-open/milaboratories.repertoire-distance-2.model';
 import { useApp } from '../app';

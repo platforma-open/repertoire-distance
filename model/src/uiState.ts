@@ -8,6 +8,9 @@ export const createDefaultUiState = (): UiState => {
       template: 'heatmap',
       currentTab: 'settings',
       layersSettings: {
+        heatmap: {
+          normalizationDirection: null,
+        },
         heatmapClustered: {
           normalizationDirection: null,
         },
@@ -79,4 +82,4 @@ export const createDefaultMetricUis = (): Metric[] => {
       isExpanded: false,
     },
   ];
-}; 
+};
