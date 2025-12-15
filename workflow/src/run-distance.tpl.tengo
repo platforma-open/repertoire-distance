@@ -1,0 +1,32 @@
+self := import("@platforma-sdk/workflow-tengo:tpl")
+exec := import("@platforma-sdk/workflow-tengo:exec")
+assets := import("@platforma-sdk/workflow-tengo:assets")
+canonical := import("@platforma-sdk/workflow-tengo:canonical")
+pConstants := import("@platforma-sdk/workflow-tengo:pframes.constants")
+
+distanceSw := assets.importSoftware("@platforma-open/milaboratories.repertoire-distance-2.software:main")
+
+self.defineOutputs("fullResult")
+
+self.body(func(args) {
+	// processColumn passes TSV file in __value__ and metrics in __extra_metrics
+	tsvFile := args.tsv
+	metrics := args.metrics
+	
+	runDistance := exec.builder().
+		software(distanceSw).
+		mem("16GiB").
+		cpu(1).
+		arg("-i").arg("input.tsv").
+		arg("-o1").arg("full_result.tsv").
+		writeFile("metrics.json", canonical.encode(metrics)).
+		arg("-j").arg("metrics.json").
+		addFile("input.tsv", tsvFile).
+		saveFile("full_result.tsv").
+		run()
+
+	return {
+		fullResult: runDistance.getFile("full_result.tsv")
+	}
+})
+

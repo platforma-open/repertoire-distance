@@ -1,0 +1,86 @@
+maps := import("@platforma-sdk/workflow-tengo:maps")
+canonical := import("@platforma-sdk/workflow-tengo:canonical")
+
+export {
+	getLabel: func(mt) {
+		if mt == "F1" {
+			return "F1 Score"
+		} else if mt == "F2" {
+			return "F2 Score"
+		} else if mt == "jaccard" {
+			return "Jaccard Index"
+		} else if mt == "D" {
+			return "D Score"
+		} else if mt == "correlation" {
+			return "Correlation"
+		}
+		return mt
+	},
+
+	getFullSpecs: func(abundanceSpec, metrics) {
+		return {
+			axes: [{
+				column: "sample1",
+				spec: {
+					name: "pl7.app/sampleId",
+					type: "String",
+					domain: maps.merge(
+						abundanceSpec.axesSpec[0].domain,
+						{
+							"pl7.app/overlap": "left"
+						}
+					),
+					annotations: {
+						"pl7.app/label": "Sample 1"
+					}
+				}
+			},
+			{
+				column: "sample2",
+				spec: {
+					name: "pl7.app/sampleId",
+					type: "String",
+					domain: maps.merge(
+						abundanceSpec.axesSpec[0].domain,
+						{
+							"pl7.app/overlap": "right"
+						}
+					),
+					annotations: {
+						"pl7.app/label": "Sample 2"
+					}
+				}
+			},
+			{
+				column: "metric",
+				spec: {
+					name:"pl7.app/vdj/overlapMetric",
+					type: "String",
+					domain: abundanceSpec.axesSpec[0].domain,
+					annotations: {
+						"pl7.app/label": "Overlap Metric"
+					}
+				}
+			}],
+			columns: [{
+				column: "value",
+				spec: {
+					name: "pl7.app/vdj/overlap",
+					valueType: "Float",
+					domain: maps.merge(
+						abundanceSpec.domain,
+						{
+							"pl7.app/downsampling": canonical.encode(metrics[0].downsampling)
+						}
+					),
+					annotations: {
+						"pl7.app/label": "Repertoire distance"
+					}
+				}
+			}],
+			storageFormat: "Parquet",
+			partitionKeyLength: 0
+		}
+	}
+}
+
