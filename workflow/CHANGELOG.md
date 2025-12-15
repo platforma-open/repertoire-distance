@@ -1,5 +1,16 @@
 # @platforma-open/milaboratories.repertoire-distance.workflow
 
+## 1.3.0
+
+### Minor Changes
+
+- cc0c12f: deduplication fix
+
+### Patch Changes
+
+- Updated dependencies [cc0c12f]
+  - @platforma-open/milaboratories.repertoire-distance-2.software@1.3.0
+
 ## 1.2.6
 
 ### Patch Changes

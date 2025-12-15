@@ -1,5 +1,11 @@
 # @platforma-open/milaboratories.repertoire-distance.software
 
+## 1.3.0
+
+### Minor Changes
+
+- cc0c12f: deduplication fix
+
 ## 1.2.5
 
 ### Patch Changes
