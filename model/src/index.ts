@@ -40,7 +40,7 @@ export const model = BlockModel.create()
     }, { includeNativeLabel: false }),
   )
 
-  .output('pf', (ctx) => {
+  .outputWithStatus('pf', (ctx) => {
     const pCols = ctx.outputs?.resolve('pf')?.getPColumns();
 
     if (pCols === undefined) {
