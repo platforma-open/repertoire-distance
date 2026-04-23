@@ -38,22 +38,24 @@ def filter_vdj_regions(df, is_single_cell_data):
 
 # ---------- Downsampling ----------
 def downsample_df(df, downsampling_config):
-    if downsampling_config['type'] == 'none':
-        return df
+    ds_type = downsampling_config['type']
 
-    total_reads = df.groupby('sampleId')['numberOfreads'].sum()
-    
-    if downsampling_config['type'] == 'top':
+    # total_reads is only needed by cumtop (as a map source) and hypergeometric (for the read target)
+    total_reads = df.groupby('sampleId')['numberOfreads'].sum() if ds_type in ('cumtop', 'hypergeometric') else None
+
+    if ds_type == 'none':
+        df = df.copy()
+    elif ds_type == 'top':
         n = downsampling_config.get('n', 1000)
         df = df.sort_values('numberOfreads', ascending=False).groupby('sampleId').head(n)
-    elif downsampling_config['type'] == 'cumtop':
+    elif ds_type == 'cumtop':
         n = downsampling_config.get('n', 50)
         df = df.sort_values('numberOfreads', ascending=False)
         df['cumsum'] = df.groupby('sampleId')['numberOfreads'].cumsum()
-        df['total'] = df.groupby('sampleId')['numberOfreads'].transform('sum')
+        df['total'] = df['sampleId'].map(total_reads)
         df = df[df['cumsum'] <= df['total'] * (n / 100)]
         df = df.drop(['cumsum', 'total'], axis=1)
-    elif downsampling_config['type'] == 'hypergeometric':
+    elif ds_type == 'hypergeometric':
         value_chooser = downsampling_config.get('valueChooser', 'auto')
         if value_chooser == 'auto':
             q20 = np.quantile(total_reads, 0.2)
@@ -81,7 +83,7 @@ def downsample_df(df, downsampling_config):
 
         df = pd.concat(downsampled, ignore_index=True)
     else:
-        raise ValueError(f"Unsupported downsampling type: {downsampling_config['type']}")
+        raise ValueError(f"Unsupported downsampling type: {ds_type}")
 
     df['fractionOfReads'] = df.groupby('sampleId')['numberOfreads'].transform(lambda x: x / x.sum())
     return df
