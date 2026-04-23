@@ -40,7 +40,8 @@ def filter_vdj_regions(df, is_single_cell_data):
 def downsample_df(df, downsampling_config):
     ds_type = downsampling_config['type']
 
-    total_reads = df.groupby('sampleId')['numberOfreads'].sum()
+    # total_reads is only needed by cumtop (as a map source) and hypergeometric (for the read target)
+    total_reads = df.groupby('sampleId')['numberOfreads'].sum() if ds_type in ('cumtop', 'hypergeometric') else None
 
     if ds_type == 'none':
         df = df.copy()
@@ -51,7 +52,7 @@ def downsample_df(df, downsampling_config):
         n = downsampling_config.get('n', 50)
         df = df.sort_values('numberOfreads', ascending=False)
         df['cumsum'] = df.groupby('sampleId')['numberOfreads'].cumsum()
-        df['total'] = df.groupby('sampleId')['numberOfreads'].transform('sum')
+        df['total'] = df['sampleId'].map(total_reads)
         df = df[df['cumsum'] <= df['total'] * (n / 100)]
         df = df.drop(['cumsum', 'total'], axis=1)
     elif ds_type == 'hypergeometric':
