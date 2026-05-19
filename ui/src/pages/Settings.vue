@@ -20,7 +20,8 @@ const abundanceRefModel = computed({
     // Snapshot the chosen dataset's human label into `data` so `.subtitle`
     // can derive the default block label without re-querying the result pool.
     app.model.data.datasetLabel = selectedRef
-      ? app.model.outputs.abundanceOptions?.find((o) => plRefsEqual(o.ref, selectedRef))?.label
+      ? (app.model.outputs.abundanceOptions?.find((o) => plRefsEqual(o.ref, selectedRef))?.label ??
+        app.model.data.datasetLabel)
       : undefined;
   },
 });

@@ -118,14 +118,17 @@ export const platforma = BlockModelV3.create(blockDataModel)
       (spec) => {
         if (!isPColumnSpec(spec)) return false;
 
+        // Check basic abundance criteria
         const hasCorrectAnnotations =
           spec.annotations?.["pl7.app/isAbundance"] === "true" &&
           spec.annotations?.["pl7.app/abundance/normalized"] === "false" &&
           spec.annotations?.["pl7.app/abundance/isPrimary"] === "true";
 
+        // Check axes structure
         const hasCorrectAxes =
           spec.axesSpec?.length >= 2 && spec.axesSpec[0]?.name === "pl7.app/sampleId";
 
+        // Filter out data with clustering algorithm in axes[1].domain
         const hasClusteringAlgorithm =
           spec.axesSpec?.[1]?.domain?.["pl7.app/vdj/clustering/algorithm"] !== undefined;
 

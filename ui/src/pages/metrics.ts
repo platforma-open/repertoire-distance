@@ -12,7 +12,7 @@ export const useMetrics = () => {
   });
 
   const addMetric = () => {
-    app.model.data.metrics.push({
+    metrics.value.push({
       id: `metric-${Date.now()}`,
       type: undefined,
       intersection: undefined,
