@@ -75,6 +75,16 @@ const createDefaultMetrics = (): Metric[] => [
   },
 ];
 
+// V1 stored only the synthesized "Repertoire Distance – {dataset}" string in
+// `uiState.blockTitle`. Parse it back to seed `datasetLabel` so the subtitle
+// stays populated for legacy projects without requiring the user to re-touch
+// the dataset picker.
+const LEGACY_TITLE_PREFIX = 'Repertoire Distance – ';
+function parseLegacyDatasetLabel(legacy: string | undefined): string | undefined {
+  if (!legacy?.startsWith(LEGACY_TITLE_PREFIX)) return undefined;
+  return legacy.slice(LEGACY_TITLE_PREFIX.length).trim() || undefined;
+}
+
 const blockDataModel = new DataModelBuilder()
   .from<BlockData>('V20260519')
   .upgradeLegacy<LegacyBlockArgs, LegacyBlockUiState>(({ args, uiState }) => ({
@@ -82,13 +92,15 @@ const blockDataModel = new DataModelBuilder()
     // Mirrors the previous V1 UI bootstrap (useMigrationMetrics): if a legacy
     // project landed with no metrics configured, seed the default set.
     metrics: args?.metrics && args.metrics.length > 0 ? args.metrics : createDefaultMetrics(),
-    blockTitle: uiState?.blockTitle ?? 'Repertoire Distance',
+    customBlockLabel: '',
+    datasetLabel: parseLegacyDatasetLabel(uiState?.blockTitle),
     graphState: uiState?.graphState ?? defaultGraphState(),
   }))
   .init(() => ({
     abundanceRef: undefined,
     metrics: createDefaultMetrics(),
-    blockTitle: 'Repertoire Distance',
+    customBlockLabel: '',
+    datasetLabel: undefined,
     graphState: defaultGraphState(),
   }));
 
@@ -153,7 +165,9 @@ export const platforma = BlockModelV3.create(blockDataModel)
 
   .output('isRunning', (ctx) => ctx.outputs?.getIsReadyOrError() === false)
 
-  .title((ctx) => ctx.data.blockTitle)
+  .title(() => 'Repertoire Distance')
+
+  .subtitle((ctx) => ctx.data.customBlockLabel || ctx.data.datasetLabel || '')
 
   .sections((_) => [
     { type: 'link' as const, href: '/' as const, label: 'Distance Graph' },

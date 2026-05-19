@@ -17,13 +17,11 @@ const abundanceRefModel = computed({
   get: () => app.model.data.abundanceRef,
   set: (selectedRef: PlRef | undefined) => {
     app.model.data.abundanceRef = selectedRef;
-    if (selectedRef) {
-      const label = app.model.outputs.abundanceOptions
-        ?.find((o) => plRefsEqual(o.ref, selectedRef))?.label ?? '';
-      if (label) {
-        app.model.data.blockTitle = 'Repertoire Distance – ' + label;
-      }
-    }
+    // Snapshot the chosen dataset's human label into `data` so `.subtitle`
+    // can derive the default block label without re-querying the result pool.
+    app.model.data.datasetLabel = selectedRef
+      ? app.model.outputs.abundanceOptions?.find((o) => plRefsEqual(o.ref, selectedRef))?.label
+      : undefined;
   },
 });
 

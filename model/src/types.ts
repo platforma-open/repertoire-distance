@@ -22,7 +22,14 @@ export type Metric = {
 export type BlockData = {
   abundanceRef?: PlRef;
   metrics: Metric[];
-  blockTitle: string;
+  customBlockLabel: string;
+  /**
+   * Human-readable label of the chosen abundance dataset, snapshotted by the
+   * UI in the same gesture that picks `abundanceRef`. Consumed by `.subtitle`
+   * so the default block label can be shown without re-querying the result
+   * pool there.
+   */
+  datasetLabel?: string;
   graphState: GraphMakerState;
 };
 
