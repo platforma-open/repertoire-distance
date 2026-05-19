@@ -6,8 +6,18 @@
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "sources": "./src/index.ts",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./dist/*": "./dist/*"
+  },
   "scripts": {
-    "build": "tsup && vite build && block-tools build-model",
+    "build": "ts-builder build --target block-model && block-tools build-model",
+    "watch": "ts-builder build --target block-model --watch",
+    "type-check": "ts-builder type-check --target block-model",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -16,25 +26,11 @@
     "@milaboratories/helpers": "catalog:"
   },
   "devDependencies": {
+    "@milaboratories/ts-builder": "catalog:",
+    "@milaboratories/ts-configs": "catalog:",
     "@platforma-sdk/block-tools": "catalog:",
+    "@platforma-sdk/eslint-config": "catalog:",
     "typescript": "catalog:",
-    "vite": "catalog:",
-    "tsup": "catalog:",
-    "@platforma-sdk/eslint-config": "catalog:"
-  },
-  "tsup": {
-    "entry": [
-      "src/index.ts"
-    ],
-    "splitting": false,
-    "treeshake": true,
-    "clean": true,
-    "format": [
-      "cjs",
-      "esm"
-    ],
-    "dts": true,
-    "minify": false,
-    "sourcemap": true
+    "vitest": "catalog:"
   }
 }

@@ -4,6 +4,7 @@ import { plRefsEqual } from '@platforma-sdk/model';
 import { PlDropdownRef, PlElementList, PlBtnSecondary, PlAlert } from '@platforma-sdk/ui-vue';
 import { getRawPlatformaInstance } from '@platforma-sdk/model';
 import { asyncComputed } from '@vueuse/core';
+import { computed } from 'vue';
 import { useApp } from '../app';
 import { getMetricDisplayName } from './util';
 import DistanceCard from './DistanceCard.vue';
@@ -12,15 +13,19 @@ import { useMetrics } from './metrics';
 const app = useApp();
 const { metrics, addMetric } = useMetrics();
 
-function setAbundanceRef(abundanceRef?: PlRef) {
-  app.model.args.abundanceRef = abundanceRef;
-  if (abundanceRef) {
-    const label = app.model.outputs.abundanceOptions?.find((o) => plRefsEqual(o.ref, abundanceRef))?.label ?? '';
-    if (label) {
-      app.model.ui.blockTitle = 'Repertoire Distance – ' + label;
+const abundanceRefModel = computed({
+  get: () => app.model.data.abundanceRef,
+  set: (selectedRef: PlRef | undefined) => {
+    app.model.data.abundanceRef = selectedRef;
+    if (selectedRef) {
+      const label = app.model.outputs.abundanceOptions
+        ?.find((o) => plRefsEqual(o.ref, selectedRef))?.label ?? '';
+      if (label) {
+        app.model.data.blockTitle = 'Repertoire Distance – ' + label;
+      }
     }
-  }
-}
+  },
+});
 
 const isEmpty = asyncComputed(async () => {
   if (app.model.outputs.overlapMetricTable === undefined) return undefined;
@@ -30,11 +35,10 @@ const isEmpty = asyncComputed(async () => {
 
 <template>
   <PlDropdownRef
-    v-model="app.model.args.abundanceRef"
+    v-model="abundanceRefModel"
     :options="app.model.outputs.abundanceOptions ?? []"
     label="Abundance"
     required
-    @update:model-value="setAbundanceRef"
   />
 
   <PlAlert v-if="isEmpty === true" type="warn" :style="{ width: '320px' }">

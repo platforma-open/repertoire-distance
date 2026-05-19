@@ -39,23 +39,12 @@ function getDefaultOptions(heatmapPCols?: PColumnIdAndSpec[]) {
   return defaults;
 }
 
-// Steps needed to reset graph maker after changing input table
 const defaultOptions = computed(() => getDefaultOptions(app.model.outputs.heatmapPCols));
-const key = computed(() => defaultOptions.value ? JSON.stringify(defaultOptions.value) : '');
-
-// Reset graph maker state to allow new selection of defaults
-// watch(() => app.model.outputs.heatmapPCols, (heatmapPCols) => {
-//   delete app.model.ui.graphState.optionsState;
-//   defaultOptions.value = getDefaultOptions(heatmapPCols);
-//   key.value = defaultOptions.value ? JSON.stringify(defaultOptions.value) : '';
-// });
-
 </script>
 
 <template>
   <GraphMaker
-    :key="key"
-    v-model="app.model.ui.graphState"
+    v-model="app.model.data.graphState"
     chart-type="heatmap"
     :p-frame="app.model.outputs.pf"
     :default-options="defaultOptions"

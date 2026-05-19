@@ -18,12 +18,28 @@ export type Metric = {
   isExpanded?: boolean;
 };
 
+/** Unified V3 data: persisted state shaped on the UI's terms. */
+export type BlockData = {
+  abundanceRef?: PlRef;
+  metrics: Metric[];
+  blockTitle: string;
+  graphState: GraphMakerState;
+};
+
+/** Projected args consumed by the workflow. */
 export type BlockArgs = {
+  abundanceRef: PlRef;
+  metrics: Metric[];
+};
+
+/** Pre-V3 args shape, frozen snapshot for `upgradeLegacy`. */
+export type LegacyBlockArgs = {
   abundanceRef?: PlRef;
   metrics: Metric[];
 };
 
-export type UiState = {
+/** Pre-V3 UI state shape, frozen snapshot for `upgradeLegacy`. */
+export type LegacyBlockUiState = {
   blockTitle: string;
   graphState: GraphMakerState;
 };
