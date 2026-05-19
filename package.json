@@ -2,7 +2,8 @@
   "name": "@platforma-open/milaboratories.repertoire-distance-2",
   "version": "1.0.0",
   "scripts": {
-    "pretty": "prettier --write \"./**/*.{js,jsx,mjs,cjs,ts,tsx,json,vue}\"",
+    "fmt": "turbo run fmt",
+    "check": "turbo run check",
     "build": "turbo run build",
     "build:dev": "env PL_PKG_DEV=local turbo run build",
     "test": "env PL_PKG_DEV=local turbo run test --concurrency 1 --env-mode=loose",

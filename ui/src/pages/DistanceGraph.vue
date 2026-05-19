@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { GraphMakerProps } from '@milaboratories/graph-maker';
-import { GraphMaker } from '@milaboratories/graph-maker';
-import type { PColumnIdAndSpec } from '@platforma-sdk/model';
-import { computed } from 'vue';
-import { useApp } from '../app';
-import Settings from './Settings.vue';
+import type { GraphMakerProps } from "@milaboratories/graph-maker";
+import { GraphMaker } from "@milaboratories/graph-maker";
+import type { PColumnIdAndSpec } from "@platforma-sdk/model";
+import { computed } from "vue";
+import { useApp } from "../app";
+import Settings from "./Settings.vue";
 
 const app = useApp();
 
@@ -17,22 +17,22 @@ function getDefaultOptions(heatmapPCols?: PColumnIdAndSpec[]) {
     return pcols.findIndex((p) => p.spec.name === name);
   }
 
-  const defaults: GraphMakerProps['defaultOptions'] = [
+  const defaults: GraphMakerProps["defaultOptions"] = [
     {
-      inputName: 'x',
-      selectedSource: heatmapPCols[getIndex('pl7.app/vdj/overlap', heatmapPCols)].spec.axesSpec[0],
+      inputName: "x",
+      selectedSource: heatmapPCols[getIndex("pl7.app/vdj/overlap", heatmapPCols)].spec.axesSpec[0],
     },
     {
-      inputName: 'y',
-      selectedSource: heatmapPCols[getIndex('pl7.app/vdj/overlap', heatmapPCols)].spec.axesSpec[1],
+      inputName: "y",
+      selectedSource: heatmapPCols[getIndex("pl7.app/vdj/overlap", heatmapPCols)].spec.axesSpec[1],
     },
     {
-      inputName: 'value',
-      selectedSource: heatmapPCols[getIndex('pl7.app/vdj/overlap', heatmapPCols)].spec,
+      inputName: "value",
+      selectedSource: heatmapPCols[getIndex("pl7.app/vdj/overlap", heatmapPCols)].spec,
     },
     {
-      inputName: 'tabBy',
-      selectedSource: heatmapPCols[getIndex('pl7.app/vdj/overlap', heatmapPCols)].spec.axesSpec[2],
+      inputName: "tabBy",
+      selectedSource: heatmapPCols[getIndex("pl7.app/vdj/overlap", heatmapPCols)].spec.axesSpec[2],
     },
   ];
 
@@ -50,7 +50,7 @@ const defaultOptions = computed(() => getDefaultOptions(app.model.outputs.heatma
     :default-options="defaultOptions"
   >
     <template #settingsSlot>
-      <Settings/>
+      <Settings />
     </template>
   </GraphMaker>
 </template>

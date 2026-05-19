@@ -1,6 +1,6 @@
-import { computed } from 'vue';
-import type { Metric } from '@platforma-open/milaboratories.repertoire-distance-2.model';
-import { useApp } from '../app';
+import { computed } from "vue";
+import type { Metric } from "@platforma-open/milaboratories.repertoire-distance-2.model";
+import { useApp } from "../app";
 
 export const useMetrics = () => {
   const app = useApp();
@@ -17,8 +17,8 @@ export const useMetrics = () => {
       type: undefined,
       intersection: undefined,
       downsampling: {
-        type: 'none',
-        valueChooser: 'auto',
+        type: "none",
+        valueChooser: "auto",
       },
       isExpanded: true,
     });

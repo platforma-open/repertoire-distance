@@ -1,60 +1,57 @@
 <script setup lang="ts">
-import type { Metric } from '@platforma-open/milaboratories.repertoire-distance-2.model';
-import type { ListOption } from '@platforma-sdk/ui-vue';
-import { PlBtnGroup, PlDropdown, PlNumberField } from '@platforma-sdk/ui-vue';
+import type { Metric } from "@platforma-open/milaboratories.repertoire-distance-2.model";
+import type { ListOption } from "@platforma-sdk/ui-vue";
+import { PlBtnGroup, PlDropdown, PlNumberField } from "@platforma-sdk/ui-vue";
 
 const metricTypeOptions: ListOption<string | undefined>[] = [
-  { label: 'F1 overlap', value: 'F1' },
-  { label: 'F2 overlap', value: 'F2' },
-  { label: 'D distance', value: 'D' },
-  { label: 'Shared clonotypes', value: 'sharedClonotypes' },
-  { label: 'Correlation', value: 'correlation' },
-  { label: 'Jaccard index', value: 'jaccard' },
+  { label: "F1 overlap", value: "F1" },
+  { label: "F2 overlap", value: "F2" },
+  { label: "D distance", value: "D" },
+  { label: "Shared clonotypes", value: "sharedClonotypes" },
+  { label: "Correlation", value: "correlation" },
+  { label: "Jaccard index", value: "jaccard" },
 ];
 
 const intersectionOptions: ListOption<string | undefined>[] = [
-  { label: 'CDR3 nucleotide + V/J genes', value: 'CDR3ntVJ' },
-  { label: 'CDR3 amino acid + V/J genes', value: 'CDR3aaVJ' },
-  { label: 'CDR3 nucleotide only', value: 'CDR3nt' },
-  { label: 'CDR3 amino acid only', value: 'CDR3aa' },
+  { label: "CDR3 nucleotide + V/J genes", value: "CDR3ntVJ" },
+  { label: "CDR3 amino acid + V/J genes", value: "CDR3aaVJ" },
+  { label: "CDR3 nucleotide only", value: "CDR3nt" },
+  { label: "CDR3 amino acid only", value: "CDR3aa" },
 ];
 
 const downsamplingOptions: ListOption<string | undefined>[] = [
-  { label: 'None', value: 'none' },
-  { label: 'Top N', value: 'top' },
-  { label: 'Cumulative Top', value: 'cumtop' },
-  { label: 'Random Sampling', value: 'hypergeometric' },
+  { label: "None", value: "none" },
+  { label: "Top N", value: "top" },
+  { label: "Cumulative Top", value: "cumtop" },
+  { label: "Random Sampling", value: "hypergeometric" },
 ];
 
 const props = defineModel<Metric>({
   required: true,
   default: {
     type: undefined,
-    intersection: 'CDR3ntVJ',
+    intersection: "CDR3ntVJ",
     downsampling: {
-      type: 'hypergeometric',
-      valueChooser: 'auto',
+      type: "hypergeometric",
+      valueChooser: "auto",
     },
   },
 });
-
 </script>
 
 <template>
-  <PlDropdown
-    v-model="props.type" :options="metricTypeOptions"
-    label="Type"
-    required
-  />
+  <PlDropdown v-model="props.type" :options="metricTypeOptions" label="Type" required />
 
   <PlDropdown
-    v-model="props.intersection" :options="intersectionOptions"
+    v-model="props.intersection"
+    :options="intersectionOptions"
     label="Intersection"
     required
   />
 
   <PlDropdown
-    v-model="props.downsampling.type" :options="downsamplingOptions"
+    v-model="props.downsampling.type"
+    :options="downsamplingOptions"
     label="Downsampling"
     required
   />
