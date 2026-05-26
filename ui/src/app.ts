@@ -1,11 +1,11 @@
-import { model } from '@platforma-open/milaboratories.repertoire-distance-2.model';
-import { defineApp } from '@platforma-sdk/ui-vue';
-import DistanceGraph from './pages/DistanceGraph.vue';
+import { platforma } from "@platforma-open/milaboratories.repertoire-distance-2.model";
+import { defineAppV3 } from "@platforma-sdk/ui-vue";
+import DistanceGraph from "./pages/DistanceGraph.vue";
 
-export const sdkPlugin = defineApp(model, () => {
+export const sdkPlugin = defineAppV3(platforma, () => {
   return {
     routes: {
-      '/': () => DistanceGraph,
+      "/": () => DistanceGraph,
     },
   };
 });

@@ -2,11 +2,18 @@
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["tsconfig.json"],
   "tasks": {
+    "fmt": {
+      "outputs": []
+    },
+    "check": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
     "build": {
+      "dependsOn": ["^build", "check"],
       "inputs": ["$TURBO_DEFAULT$"],
       "env": ["PL_PKG_DEV"],
-      "outputs": ["./dist/**", "./block-pack/**", "./pkg-*.tgz"],
-      "dependsOn": ["^build"]
+      "outputs": ["./dist/**", "./block-pack/**", "./pkg-*.tgz"]
     },
     "do-pack": {
       "dependsOn": ["build"],
