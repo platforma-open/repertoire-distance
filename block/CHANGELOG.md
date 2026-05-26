@@ -1,5 +1,19 @@
 # @platforma-open/milaboratories.repertoire-distance
 
+## 2.2.0
+
+### Minor Changes
+
+- 4b18d0b: Migrate block to BlockModelV3. Unified `BlockData` (UI-shaped persistence); `.args` lambda derives the workflow-visible shape and validates by throw. Persisted V1 state preserved via `DataModelBuilder.upgradeLegacy`. UI bindings move to `app.model.data`; `defineApp` → `defineAppV3`.
+
+  Pin SDK to 1.77.4 / workflow-tengo 5.25.0 (previously caret-ranged from 1.65.10). Drop the V1-only `useMigrationMetrics` bootstrap — legacy projects with empty metrics now get the default seed at `upgradeLegacy` time. Drop dead `model/src/convertes.ts` (referenced a non-existent `MetricUI` type and was unused).
+
+### Patch Changes
+
+- Updated dependencies [4b18d0b]
+  - @platforma-open/milaboratories.repertoire-distance-2.model@1.5.0
+  - @platforma-open/milaboratories.repertoire-distance-2.ui@1.4.0
+
 ## 2.1.10
 
 ### Patch Changes
