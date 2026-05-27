@@ -1,5 +1,11 @@
 # @platforma-open/milaboratories.repertoire-distance.model
 
+## 1.6.0
+
+### Minor Changes
+
+- 5c126d6: Adapt to peptide inputs
+
 ## 1.5.0
 
 ### Minor Changes

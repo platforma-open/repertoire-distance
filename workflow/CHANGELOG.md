@@ -1,5 +1,16 @@
 # @platforma-open/milaboratories.repertoire-distance.workflow
 
+## 1.4.0
+
+### Minor Changes
+
+- 5c126d6: Adapt to peptide inputs
+
+### Patch Changes
+
+- Updated dependencies [5c126d6]
+  - @platforma-open/milaboratories.repertoire-distance-2.software@1.4.0
+
 ## 1.3.1
 
 ### Patch Changes
