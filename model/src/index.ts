@@ -210,7 +210,12 @@ export const platforma = BlockModelV3.create(blockDataModel)
   .output("overlapMetricTable", (ctx) => {
     const pCols = ctx.outputs?.resolve("pf")?.getPColumns();
     if (pCols === undefined) return undefined;
-    const overlapColumn = pCols.find((p) => p.spec.name === "pl7.app/overlap");
+    // Match both the current spec name and the legacy VDJ-prefixed one so
+    // projects with cached output from an older block version still resolve.
+    // @TODO: Drop the legacy lookup once no projects with old cached outputs remain (2026-05-27).
+    const overlapColumn = pCols.find(
+      (p) => p.spec.name === "pl7.app/overlap" || p.spec.name === "pl7.app/vdj/overlap",
+    );
     if (overlapColumn === undefined) return undefined;
     return ctx.createPTable({ columns: [overlapColumn] });
   })
