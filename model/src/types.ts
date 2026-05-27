@@ -29,13 +29,22 @@ export type BlockData = {
    * pool there.
    */
   datasetLabel?: string;
+  /**
+   * Modality the current `metrics` were seeded for. Set by the UI watcher that
+   * reseeds defaults when the input modality changes (VDJ ↔ peptide). Stays
+   * undefined on first input — the watcher treats that as a one-time adoption
+   * pass so legacy V1 → V3 upgrades don't lose user-customized metrics.
+   */
+  lastAppliedModality?: "antibody_tcr" | "peptide";
   graphState: GraphMakerState;
 };
 
 /** Projected args consumed by the workflow. */
 export type BlockArgs = {
   abundanceRef: PlRef;
-  metrics: Metric[];
+  // `isExpanded` is UI-only and deliberately excluded so toggling a metric
+  // section doesn't change args (and re-activate the Run button).
+  metrics: Omit<Metric, "isExpanded">[];
 };
 
 /** Pre-V3 args shape, frozen snapshot for `upgradeLegacy`. */

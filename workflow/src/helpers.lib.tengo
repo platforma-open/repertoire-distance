@@ -54,7 +54,7 @@ export {
 			{
 				column: "metric",
 				spec: {
-					name:"pl7.app/vdj/overlapMetric",
+					name:"pl7.app/overlapMetric",
 					type: "String",
 					domain: abundanceSpec.axesSpec[0].domain,
 					annotations: {
@@ -65,7 +65,7 @@ export {
 			columns: [{
 				column: "value",
 				spec: {
-					name: "pl7.app/vdj/overlap",
+					name: "pl7.app/overlap",
 					valueType: "Float",
 					domain: maps.merge(
 						abundanceSpec.domain,

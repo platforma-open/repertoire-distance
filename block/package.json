@@ -25,17 +25,18 @@
       "ui": "@platforma-open/milaboratories.repertoire-distance-2.ui/dist"
     },
     "meta": {
-      "title": "Repertoire Distance",
+      "title": "Distance Analysis",
       "logo": "file:../logos/block-logo.png",
       "url": "https://github.com/platforma-open/repertoire-distance",
       "support": "mailto:support@milaboratories.com",
-      "description": "Calculates pairwise similarity distances between immune receptor repertoires using configurable overlap metrics (F1, F2, Jaccard, correlation) to compare repertoire composition across samples.",
+      "description": "Calculates pairwise similarity distances between clonotype or peptide repertoires using configurable overlap metrics (F1, F2, Jaccard, correlation) to compare composition across samples.",
       "longDescription": "file:../docs/description.md",
       "changelog": "file:../CHANGELOG.md",
       "tags": [
         "repertoire",
         "distance",
-        "similarity"
+        "similarity",
+        "peptide"
       ],
       "organization": {
         "name": "MiLaboratories Inc",
@@ -47,5 +48,5 @@
   "devDependencies": {
     "@platforma-sdk/block-tools": "catalog:"
   },
-  "packageManager": "pnpm@9.12.0"
+  "packageManager": "pnpm@9.14.4"
 }

@@ -3,7 +3,9 @@ import type {
   IntersectionType,
 } from "@platforma-open/milaboratories.repertoire-distance-2.model";
 
-export function getMetricLabel(type: DistanceType): string {
+export type Modality = "antibody_tcr" | "peptide";
+
+export function getMetricLabel(type: DistanceType, modality?: Modality): string {
   switch (type) {
     case "F1":
       return "F1 Overlap";
@@ -12,7 +14,7 @@ export function getMetricLabel(type: DistanceType): string {
     case "D":
       return "D distance";
     case "sharedClonotypes":
-      return "Shared clonotypes";
+      return modality === "peptide" ? "Shared peptides" : "Shared clonotypes";
     case "correlation":
       return "Correlation";
     case "jaccard":
@@ -22,7 +24,17 @@ export function getMetricLabel(type: DistanceType): string {
   }
 }
 
-export function getIntersectionLabel(intersection: IntersectionType): string {
+export function getIntersectionLabel(intersection: IntersectionType, modality?: Modality): string {
+  if (modality === "peptide") {
+    switch (intersection) {
+      case "CDR3nt":
+        return "Peptide nucleotide";
+      case "CDR3aa":
+        return "Peptide amino acid";
+      default:
+        return "Unknown overlap";
+    }
+  }
   switch (intersection) {
     case "CDR3ntVJ":
       return "CDR3 nucleotide + V/J genes";
@@ -37,11 +49,7 @@ export function getIntersectionLabel(intersection: IntersectionType): string {
   }
 }
 
-export function getMetricDisplayName(
-  type: DistanceType | undefined,
-  // intersection: IntersectionType | undefined,
-): string {
-  const metricPart = type ? getMetricLabel(type) : "Metric";
-  // const overlapPart = intersection ? getIntersectionLabel(intersection) : 'overlap';
+export function getMetricDisplayName(type: DistanceType | undefined, modality?: Modality): string {
+  const metricPart = type ? getMetricLabel(type, modality) : "Metric";
   return `${metricPart}`;
 }

@@ -26,21 +26,30 @@ self.awaitState("columnBundle", { wildcard: "*" }, "spec", "ResourceReady")
 wf.prepare(func(args) {
 	bundleBuilder := wf.createPBundleBuilder()
 	bundleBuilder.addAnchor("main", args.abundanceRef)
+
+	// VDJ CDR3 sequences (clonotype inputs). Empty for peptide inputs.
 	bundleBuilder.addMulti({
 		name: "pl7.app/vdj/sequence",
 		domain: {
 			"pl7.app/vdj/feature": "CDR3"  // CDR1, CDR2, CDR3, or FR1
 		},
 		axes: [{anchor: "main", idx: 1}]
-	}, "sequences");
-	
-	
+	}, "vdjSequences")
+
+	// Peptide sequences (peptide inputs). Empty for clonotype inputs.
+	bundleBuilder.addMulti({
+		name: "pl7.app/sequence",
+		domain: { "pl7.app/feature": "peptide" },
+		axes: [{anchor: "main", idx: 1}]
+	}, "peptideSequences")
+
+	// V/J gene hits. Empty for peptide inputs (no genes for peptides).
 	bundleBuilder.addMulti({
 		name: "pl7.app/vdj/geneHit",
 		axes: [{anchor: "main", idx: 1}]
-	}, "genes");
-	
-	return  { 
+	}, "genes")
+
+	return  {
 		columns: bundleBuilder.build()
 	}
 })
@@ -49,11 +58,11 @@ wf.body(func(args) {
 	blockId := wf.blockId().getDataAsJson()
 
 	columns := args.columns
-	sequences := columns.getColumns("sequences")
 	genes := columns.getColumns("genes")
 	abundanceSpec := columns.getSpec(args.abundanceRef)
+	isPeptide := abundanceSpec.axesSpec[1].name == "pl7.app/variantKey"
 	isSingleCell := abundanceSpec.axesSpec[1].name == "pl7.app/vdj/scClonotypeKey"
-	
+
 	// Anonymize sampleId axis (index 0) via dedicated template for dedup-friendly mapping reuse
 	abundanceColumn := columns.getColumn(args.abundanceRef)
 	anonymizationResult := render.create(anonymizationTpl, {
@@ -62,24 +71,37 @@ wf.body(func(args) {
 	})
 	anonymizedAbundanceData := anonymizationResult.output("anonymizedData")
 	mappingRef := anonymizationResult.output("mapping")
-	
+
 	table := pframes.tsvFileBuilder()
 
 	table.setAxisHeader("pl7.app/sampleId", "sampleId")
 	table.add({ spec: abundanceColumn.spec, data: anonymizedAbundanceData }, {header: "count"})
 
-	// Sequences and genes share the same axes as abundance, so they will use the anonymized sampleId
-	// from the abundance column when the TSV is built
-	for seqColumn in sequences {
-		if isSingleCell {
-			if seqColumn.spec.domain["pl7.app/vdj/scClonotypeChain/index"] == "primary" {
-				chain := seqColumn.spec.domain["pl7.app/vdj/scClonotypeChain"]
-				alphabet := seqColumn.spec.domain["pl7.app/alphabet"]
-				alphabetShort := (alphabet == "aminoacid") ? "aa" : "nt"
-				table.add(seqColumn, {header: "CDR3 " + alphabetShort + " " + chain})
+	// Sequences share the same per-row axis (clonotypeKey / scClonotypeKey / variantKey) as
+	// abundance, so they pick up the anonymized sampleId when the TSV is built. Branch on
+	// modality and iterate the appropriate group only.
+	// The peptide branch routes sequences to the existing CDR3nt/CDR3aa Python TSV headers;
+	// the internal "CDR3" naming is hidden from users (UI labels adapt per modality).
+	if isPeptide {
+		// Modality-specific headers so the TSV is self-documenting; the Python
+		// script reads them based on its --modality argument.
+		for seqColumn in columns.getColumns("peptideSequences") {
+			alphabet := seqColumn.spec.domain["pl7.app/alphabet"]
+			header := (alphabet == "aminoacid") ? "PEPTIDEaa" : "PEPTIDEnt"
+			table.add(seqColumn, {header: header})
+		}
+	} else {
+		for seqColumn in columns.getColumns("vdjSequences") {
+			if isSingleCell {
+				if seqColumn.spec.domain["pl7.app/vdj/scClonotypeChain/index"] == "primary" {
+					chain := seqColumn.spec.domain["pl7.app/vdj/scClonotypeChain"]
+					alphabet := seqColumn.spec.domain["pl7.app/alphabet"]
+					alphabetShort := (alphabet == "aminoacid") ? "aa" : "nt"
+					table.add(seqColumn, {header: "CDR3 " + alphabetShort + " " + chain})
+				}
+			} else {
+				table.add(seqColumn, {header: seqColumn.spec.annotations["pl7.app/label"]})
 			}
-		} else {
-			table.add(seqColumn, {header: seqColumn.spec.annotations["pl7.app/label"]})
 		}
 	}
 
@@ -103,7 +125,8 @@ wf.body(func(args) {
 	// Cache run-distance output; only this step should be deduped across identical tsv/metrics
 	runDistance := render.create(runDistanceTpl, {
 		tsv: tsv,
-		metrics: args.metrics
+		metrics: args.metrics,
+		isPeptide: isPeptide
 	})
 
 	distanceResult := runDistance.output("fullResult")
@@ -115,7 +138,8 @@ wf.body(func(args) {
 		{
 			mapping: mappingRef,
 			runDistanceResult: distanceResult,
-			metrics: args.metrics
+			metrics: args.metrics,
+			isPeptide: isPeptide
 		}
 	)
 	deanonimizedTsv := deanonimization.output("deanonimizedTsv")

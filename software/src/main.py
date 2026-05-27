@@ -88,8 +88,21 @@ def downsample_df(df, downsampling_config):
     df['fractionOfReads'] = df.groupby('sampleId')['numberOfreads'].transform(lambda x: x / x.sum())
     return df
 
+# ---------- Modality / Column Naming ----------
+# Modality drives which input column carries the aa/nt sequences and whether V/J
+# gene columns exist. The workflow knows the modality up front and passes it via
+# --modality.
+def get_bulk_columns(modality):
+    """Bulk-data column names for the given modality."""
+    if modality == 'peptide':
+        # Peptide inputs have no V/J genes.
+        return {'aa': 'PEPTIDEaa', 'nt': 'PEPTIDEnt', 'v': None, 'j': None}
+    # antibody_tcr (default)
+    return {'aa': 'CDR3aa', 'nt': 'CDR3nt', 'v': 'VGene', 'j': 'JGene'}
+
+
 # ---------- Clone Key Builder ----------
-def make_clone_key(row, intersection_type, is_single_cell_data):
+def make_clone_key(row, intersection_type, is_single_cell_data, cols):
     if is_single_cell_data:
         # Single-cell data: always use both chains for these intersection types
         if intersection_type == 'CDR3ntVJ':
@@ -103,15 +116,16 @@ def make_clone_key(row, intersection_type, is_single_cell_data):
         else:
             raise ValueError(f"Unsupported intersection_type for single-cell data: {intersection_type}")
     else:
-        # Bulk data: use single-chain columns
+        # Bulk data: read sequence/gene columns via the modality-specific name map.
+        aa, nt, v, j = cols['aa'], cols['nt'], cols.get('v'), cols.get('j')
         if intersection_type == 'CDR3ntVJ':
-            return f"{row['CDR3nt']}|{row['VGene']}|{row['JGene']}"
+            return f"{row[nt]}|{row[v]}|{row[j]}"
         elif intersection_type == 'CDR3aaVJ':
-            return f"{row['CDR3aa']}|{row['VGene']}|{row['JGene']}"
+            return f"{row[aa]}|{row[v]}|{row[j]}"
         elif intersection_type == 'CDR3nt':
-            return row['CDR3nt']
+            return row[nt]
         elif intersection_type == 'CDR3aa':
-            return row['CDR3aa']
+            return row[aa]
         else:
             raise ValueError(f"Unsupported intersection_type for bulk data: {intersection_type}")
 
@@ -154,7 +168,7 @@ def compute_metric(s1, s2, clones1, clones2, set1, set2, metric):
         raise ValueError(f"Unsupported metric: {metric}")
 
 # ---------- Main Processing ----------
-def compute_metrics_wide(df_original, metric_configs, is_single_cell_data):
+def compute_metrics_wide(df_original, metric_configs, is_single_cell_data, cols):
     sample_ids = sorted(df_original['sampleId'].unique())
 
     # All sample × sample pairs
@@ -189,7 +203,7 @@ def compute_metrics_wide(df_original, metric_configs, is_single_cell_data):
         
         # Step 1: build cloneKey once
         df = df_down.copy()
-        df['cloneKey'] = df.apply(lambda row: make_clone_key(row, intersection, is_single_cell_data), axis=1)
+        df['cloneKey'] = df.apply(lambda row: make_clone_key(row, intersection, is_single_cell_data, cols), axis=1)
         df = df[['sampleId', 'cloneKey', 'fractionOfReads']].rename(columns={'fractionOfReads': 'cloneFraction'})
 
         # Build sample_clone_dict in deterministic order (sorted by sampleId)
@@ -249,11 +263,19 @@ def create_empty_outputs(metric_configs, output_full_path, sep):
 
 # ---------- CLI Entry ----------
 def main():
-    parser = argparse.ArgumentParser(description="Downsample and compute wide-format clonotype distances between samples, supporting both bulk and single-cell dual-chain data.")
+    parser = argparse.ArgumentParser(description="Downsample and compute wide-format sequence-repertoire distances between samples. Supports VDJ clonotype data (bulk or single-cell) and peptide repertoires.")
     parser.add_argument('-i', '--input', required=True, help="Input TSV or CSV file")
     parser.add_argument('-j', '--json', required=True, help="JSON config: [{intersection: ..., type: ..., downsampling: ...}]")
     parser.add_argument('-o1', '--output_full', required=True, help="Output CSV file with all sample pairs (matrix-friendly)")
     parser.add_argument('--sep', default=None, help="Field separator (default auto-detect: CSV=',' or TSV='\\t')")
+    parser.add_argument(
+        '--modality',
+        default='antibody_tcr',
+        choices=['antibody_tcr', 'peptide'],
+        help="Input modality. 'antibody_tcr' (default) expects CDR3aa/CDR3nt + VGene/JGene "
+             "for bulk or *A/*B suffixed columns for single-cell. 'peptide' expects "
+             "PEPTIDEaa/PEPTIDEnt with no V/J genes.",
+    )
 
     args = parser.parse_args()
     sep = args.sep or ('\t' if args.input.endswith('.tsv') else ',')
@@ -276,65 +298,80 @@ def main():
 
     # Clean and normalize column names
     df.columns = [col.strip().replace('"', '').replace(' ', '') for col in df.columns]
-    
-    # Attempt to detect if it's single-cell dual-chain data based on column presence
-    # Check for both A and B chain columns to ensure complete single-cell data
-    single_cell_a_chain_cols = {'CDR3aaA', 'CDR3ntA', 'VGeneA', 'JGeneA'}
-    single_cell_b_chain_cols = {'CDR3aaB', 'CDR3ntB', 'VGeneB', 'JGeneB'}
-    
-    a_chain_present = single_cell_a_chain_cols.issubset(df.columns)
-    b_chain_present = single_cell_b_chain_cols.issubset(df.columns)
-    
+
+    modality = args.modality
+    bulk_cols = get_bulk_columns(modality)
     is_single_cell_data = False
-    if a_chain_present and b_chain_present:
-        # Complete single-cell dual-chain data detected
-        is_single_cell_data = True
-        # Rename single-cell columns to standardized internal names (_A, _B suffix)
-        df.rename(columns={
-            'CDR3aaA': 'CDR3aa_A', 'CDR3ntA': 'CDR3nt_A', 'VGeneA': 'VGene_A', 'JGeneA': 'JGene_A',
-            'CDR3aaB': 'CDR3aa_B', 'CDR3ntB': 'CDR3nt_B', 'VGeneB': 'VGene_B', 'JGeneB': 'JGene_B',
-            'count': 'numberOfreads'
-        }, inplace=True)
-        # Ensure all required A and B chain columns are present
-        required_cols = {
-            'sampleId', 'numberOfreads',
-            'CDR3aa_A', 'CDR3nt_A', 'VGene_A', 'JGene_A',
-            'CDR3aa_B', 'CDR3nt_B', 'VGene_B', 'JGene_B'
-        }
-    elif a_chain_present and not b_chain_present:
-        # Only A-chain columns present - treat as bulk data using A-chain
-        df.rename(columns={
-            'CDR3aaA': 'CDR3aa', 'CDR3ntA': 'CDR3nt', 'VGeneA': 'VGene', 'JGeneA': 'JGene',
-            'count': 'numberOfreads'
-        }, inplace=True)
-        required_cols = {'sampleId', 'numberOfreads', 'CDR3aa', 'CDR3nt', 'VGene', 'JGene'}
-    elif b_chain_present and not a_chain_present:
-        # Only B-chain columns present - treat as bulk data using B-chain
-        df.rename(columns={
-            'CDR3aaB': 'CDR3aa', 'CDR3ntB': 'CDR3nt', 'VGeneB': 'VGene', 'JGeneB': 'JGene',
-            'count': 'numberOfreads'
-        }, inplace=True)
-        required_cols = {'sampleId', 'numberOfreads', 'CDR3aa', 'CDR3nt', 'VGene', 'JGene'}
+
+    if modality == 'peptide':
+        # Peptide repertoires are bulk-only today (no per-cell peptide pipeline).
+        # Skip the single-cell detection branch; only sequence-only intersections apply.
+        df.rename(columns={'count': 'numberOfreads'}, inplace=True)
+        needed_seq = set()
+        for m in metric_configs:
+            inter = m.get('intersection')
+            if inter in ('CDR3ntVJ', 'CDR3aaVJ'):
+                raise ValueError(
+                    f"Intersection '{inter}' requires V/J gene columns, "
+                    "but modality 'peptide' has no V/J genes."
+                )
+            if inter == 'CDR3nt':
+                needed_seq.add(bulk_cols['nt'])
+            elif inter == 'CDR3aa':
+                needed_seq.add(bulk_cols['aa'])
+        required_cols = {'sampleId', 'numberOfreads'} | needed_seq
     else:
-        # Assume bulk data, rename original columns
-        df.rename(columns={
-            'CDR3aa': 'CDR3aa', # No change, but good to list for clarity
-            'CDR3nt': 'CDR3nt', # No change
-            'count': 'numberOfreads',
-            'VGene': 'VGene', # No change
-            'JGene': 'JGene' # No change
-        }, inplace=True)
-        # Ensure all required bulk columns are present
-        required_cols = {'sampleId', 'numberOfreads', 'CDR3aa', 'CDR3nt', 'VGene', 'JGene'}
+        # VDJ (antibody_tcr): may be single-cell dual-chain or bulk.
+        single_cell_a_chain_cols = {'CDR3aaA', 'CDR3ntA', 'VGeneA', 'JGeneA'}
+        single_cell_b_chain_cols = {'CDR3aaB', 'CDR3ntB', 'VGeneB', 'JGeneB'}
+
+        a_chain_present = single_cell_a_chain_cols.issubset(df.columns)
+        b_chain_present = single_cell_b_chain_cols.issubset(df.columns)
+
+        if a_chain_present and b_chain_present:
+            # Complete single-cell dual-chain data detected
+            is_single_cell_data = True
+            # Rename single-cell columns to standardized internal names (_A, _B suffix)
+            df.rename(columns={
+                'CDR3aaA': 'CDR3aa_A', 'CDR3ntA': 'CDR3nt_A', 'VGeneA': 'VGene_A', 'JGeneA': 'JGene_A',
+                'CDR3aaB': 'CDR3aa_B', 'CDR3ntB': 'CDR3nt_B', 'VGeneB': 'VGene_B', 'JGeneB': 'JGene_B',
+                'count': 'numberOfreads'
+            }, inplace=True)
+            # Ensure all required A and B chain columns are present
+            required_cols = {
+                'sampleId', 'numberOfreads',
+                'CDR3aa_A', 'CDR3nt_A', 'VGene_A', 'JGene_A',
+                'CDR3aa_B', 'CDR3nt_B', 'VGene_B', 'JGene_B'
+            }
+        elif a_chain_present and not b_chain_present:
+            # Only A-chain columns present - treat as bulk data using A-chain
+            df.rename(columns={
+                'CDR3aaA': 'CDR3aa', 'CDR3ntA': 'CDR3nt', 'VGeneA': 'VGene', 'JGeneA': 'JGene',
+                'count': 'numberOfreads'
+            }, inplace=True)
+            required_cols = {'sampleId', 'numberOfreads', 'CDR3aa', 'CDR3nt', 'VGene', 'JGene'}
+        elif b_chain_present and not a_chain_present:
+            # Only B-chain columns present - treat as bulk data using B-chain
+            df.rename(columns={
+                'CDR3aaB': 'CDR3aa', 'CDR3ntB': 'CDR3nt', 'VGeneB': 'VGene', 'JGeneB': 'JGene',
+                'count': 'numberOfreads'
+            }, inplace=True)
+            required_cols = {'sampleId', 'numberOfreads', 'CDR3aa', 'CDR3nt', 'VGene', 'JGene'}
+        else:
+            # Bulk VDJ
+            df.rename(columns={'count': 'numberOfreads'}, inplace=True)
+            # Ensure all required bulk columns are present
+            required_cols = {'sampleId', 'numberOfreads', 'CDR3aa', 'CDR3nt', 'VGene', 'JGene'}
 
     if not required_cols.issubset(df.columns):
-        raise ValueError(f"Missing required columns. Expected for data type detected: {required_cols - set(df.columns)}")
+        raise ValueError(f"Missing required columns. Expected for modality '{modality}': {required_cols - set(df.columns)}")
 
-    # Filter out rows with invalid VDJ regions
-    df = filter_vdj_regions(df, is_single_cell_data)
+    # Filter out rows with invalid VDJ regions (VDJ mode only)
+    if modality != 'peptide':
+        df = filter_vdj_regions(df, is_single_cell_data)
 
     # Apply downsampling for each metric configuration individually
-    wide_result_df = compute_metrics_wide(df, metric_configs, is_single_cell_data)
+    wide_result_df = compute_metrics_wide(df, metric_configs, is_single_cell_data, bulk_cols)
 
     # Convert wide format to long format for full results
     value_columns = [f"{m['type']} {m['intersection']}" for m in metric_configs]

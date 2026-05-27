@@ -2,22 +2,39 @@
 import type { Metric } from "@platforma-open/milaboratories.repertoire-distance-2.model";
 import type { ListOption } from "@platforma-sdk/ui-vue";
 import { PlBtnGroup, PlDropdown, PlNumberField } from "@platforma-sdk/ui-vue";
+import { computed } from "vue";
+import { useApp } from "../app";
 
-const metricTypeOptions: ListOption<string | undefined>[] = [
-  { label: "F1 overlap", value: "F1" },
-  { label: "F2 overlap", value: "F2" },
-  { label: "D distance", value: "D" },
-  { label: "Shared clonotypes", value: "sharedClonotypes" },
-  { label: "Correlation", value: "correlation" },
-  { label: "Jaccard index", value: "jaccard" },
-];
+const app = useApp();
 
-const intersectionOptions: ListOption<string | undefined>[] = [
-  { label: "CDR3 nucleotide + V/J genes", value: "CDR3ntVJ" },
-  { label: "CDR3 amino acid + V/J genes", value: "CDR3aaVJ" },
-  { label: "CDR3 nucleotide only", value: "CDR3nt" },
-  { label: "CDR3 amino acid only", value: "CDR3aa" },
-];
+const metricTypeOptions = computed<ListOption<string | undefined>[]>(() => {
+  const sharedLabel =
+    app.model.outputs.modality === "peptide" ? "Shared peptides" : "Shared clonotypes";
+  return [
+    { label: "F1 overlap", value: "F1" },
+    { label: "F2 overlap", value: "F2" },
+    { label: "D distance", value: "D" },
+    { label: sharedLabel, value: "sharedClonotypes" },
+    { label: "Correlation", value: "correlation" },
+    { label: "Jaccard index", value: "jaccard" },
+  ];
+});
+
+const intersectionOptions = computed<ListOption<string | undefined>[]>(() => {
+  // Peptide inputs have no V/J genes — only the two sequence-only intersections apply.
+  if (app.model.outputs.modality === "peptide") {
+    return [
+      { label: "Peptide nucleotide", value: "CDR3nt" },
+      { label: "Peptide amino acid", value: "CDR3aa" },
+    ];
+  }
+  return [
+    { label: "CDR3 nucleotide + V/J genes", value: "CDR3ntVJ" },
+    { label: "CDR3 amino acid + V/J genes", value: "CDR3aaVJ" },
+    { label: "CDR3 nucleotide only", value: "CDR3nt" },
+    { label: "CDR3 amino acid only", value: "CDR3aa" },
+  ];
+});
 
 const downsamplingOptions: ListOption<string | undefined>[] = [
   { label: "None", value: "none" },
@@ -59,7 +76,7 @@ const props = defineModel<Metric>({
   <PlNumberField
     v-if="props.downsampling.type === 'cumtop'"
     v-model="props.downsampling.n"
-    label="Select % of the repertoire to include"
+    label="Select % of the abundance distribution to include"
     :minValue="0"
     :maxValue="100"
     :step="1"

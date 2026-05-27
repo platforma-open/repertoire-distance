@@ -11,7 +11,7 @@ import type { BlockArgs, BlockData, LegacyBlockArgs, LegacyBlockUiState, Metric 
 export * from "./types";
 
 const defaultGraphState = (): GraphMakerState => ({
-  title: "Repertoire Distance",
+  title: "Distance Analysis",
   template: "heatmap",
   currentTab: "settings",
   layersSettings: {
@@ -24,7 +24,7 @@ const defaultGraphState = (): GraphMakerState => ({
   },
 });
 
-const createDefaultMetrics = (): Metric[] => [
+export const createDefaultMetrics = (): Metric[] => [
   {
     id: "f1-cdr3ntvj",
     type: "F1",
@@ -69,6 +69,53 @@ const createDefaultMetrics = (): Metric[] => [
   },
 ];
 
+// Peptide inputs have no V/J genes — sequence-only intersections only. Use
+// amino-acid sequences as the default (most common for peptide discovery).
+export const createPeptideMetrics = (): Metric[] => [
+  {
+    id: "f1-cdr3aa",
+    type: "F1",
+    intersection: "CDR3aa",
+    downsampling: { type: "hypergeometric", valueChooser: "auto" },
+    isExpanded: false,
+  },
+  {
+    id: "f2-cdr3aa",
+    type: "F2",
+    intersection: "CDR3aa",
+    downsampling: { type: "hypergeometric", valueChooser: "auto" },
+    isExpanded: false,
+  },
+  {
+    id: "jaccard-cdr3aa",
+    type: "jaccard",
+    intersection: "CDR3aa",
+    downsampling: { type: "hypergeometric", valueChooser: "auto" },
+    isExpanded: false,
+  },
+  {
+    id: "d-cdr3aa",
+    type: "D",
+    intersection: "CDR3aa",
+    downsampling: { type: "hypergeometric", valueChooser: "auto" },
+    isExpanded: false,
+  },
+  {
+    id: "shared-cdr3aa",
+    type: "sharedClonotypes",
+    intersection: "CDR3aa",
+    downsampling: { type: "hypergeometric", valueChooser: "auto" },
+    isExpanded: false,
+  },
+  {
+    id: "correlation-cdr3aa",
+    type: "correlation",
+    intersection: "CDR3aa",
+    downsampling: { type: "hypergeometric", valueChooser: "auto" },
+    isExpanded: false,
+  },
+];
+
 // V1 stored only the synthesized "Repertoire Distance – {dataset}" string in
 // `uiState.blockTitle`. Parse it back to seed `datasetLabel` so the subtitle
 // stays populated for legacy projects without requiring the user to re-touch
@@ -88,6 +135,7 @@ const blockDataModel = new DataModelBuilder()
     metrics: args?.metrics && args.metrics.length > 0 ? args.metrics : createDefaultMetrics(),
     customBlockLabel: "",
     datasetLabel: parseLegacyDatasetLabel(uiState?.blockTitle),
+    lastAppliedModality: "antibody_tcr",
     graphState: uiState?.graphState ?? defaultGraphState(),
   }))
   .init(() => ({
@@ -109,7 +157,15 @@ export const platforma = BlockModelV3.create(blockDataModel)
     }
     return {
       abundanceRef: data.abundanceRef,
-      metrics: data.metrics,
+      // Project only the fields the workflow consumes. `isExpanded` is UI-only
+      // (metric section open/closed) — including it would make expand/collapse
+      // change args and re-activate the Run button.
+      metrics: data.metrics.map((m) => ({
+        id: m.id,
+        type: m.type,
+        intersection: m.intersection,
+        downsampling: m.downsampling,
+      })),
     };
   })
 
@@ -128,9 +184,12 @@ export const platforma = BlockModelV3.create(blockDataModel)
         const hasCorrectAxes =
           spec.axesSpec?.length >= 2 && spec.axesSpec[0]?.name === "pl7.app/sampleId";
 
-        // Filter out data with clustering algorithm in axes[1].domain
+        // Filter out clustered abundance.
+        const axis1Domain = spec.axesSpec?.[1]?.domain;
         const hasClusteringAlgorithm =
-          spec.axesSpec?.[1]?.domain?.["pl7.app/vdj/clustering/algorithm"] !== undefined;
+          // @TODO; Remove 'vdj' case once block versions with old namespace are not used (2026-05-27)
+          axis1Domain?.["pl7.app/clustering/algorithm"] !== undefined ||
+          axis1Domain?.["pl7.app/vdj/clustering/algorithm"] !== undefined;
 
         return hasCorrectAnnotations && hasCorrectAxes && !hasClusteringAlgorithm;
       },
@@ -159,14 +218,31 @@ export const platforma = BlockModelV3.create(blockDataModel)
   .output("overlapMetricTable", (ctx) => {
     const pCols = ctx.outputs?.resolve("pf")?.getPColumns();
     if (pCols === undefined) return undefined;
-    const overlapColumn = pCols.find((p) => p.spec.name === "pl7.app/vdj/overlap");
+    // Match both the current spec name and the legacy VDJ-prefixed one so
+    // projects with cached output from an older block version still resolve.
+    // @TODO: Drop the legacy lookup once no projects with old cached outputs remain (2026-05-27).
+    const overlapColumn = pCols.find(
+      (p) => p.spec.name === "pl7.app/overlap" || p.spec.name === "pl7.app/vdj/overlap",
+    );
     if (overlapColumn === undefined) return undefined;
     return ctx.createPTable({ columns: [overlapColumn] });
   })
 
+  .output(
+    "modality",
+    (ctx) => {
+      const spec = ctx.data.abundanceRef
+        ? ctx.resultPool.getPColumnSpecByRef(ctx.data.abundanceRef)
+        : undefined;
+      if (!spec) return undefined;
+      return spec.axesSpec[1]?.name === "pl7.app/variantKey" ? "peptide" : "antibody_tcr";
+    },
+    { retentive: true },
+  )
+
   .output("isRunning", (ctx) => ctx.outputs?.getIsReadyOrError() === false)
 
-  .title(() => "Repertoire Distance")
+  .title(() => "Distance Analysis")
 
   .subtitle((ctx) => ctx.data.customBlockLabel || ctx.data.datasetLabel || "")
 
