@@ -157,7 +157,15 @@ export const platforma = BlockModelV3.create(blockDataModel)
     }
     return {
       abundanceRef: data.abundanceRef,
-      metrics: data.metrics,
+      // Project only the fields the workflow consumes. `isExpanded` is UI-only
+      // (metric section open/closed) — including it would make expand/collapse
+      // change args and re-activate the Run button.
+      metrics: data.metrics.map((m) => ({
+        id: m.id,
+        type: m.type,
+        intersection: m.intersection,
+        downsampling: m.downsampling,
+      })),
     };
   })
 

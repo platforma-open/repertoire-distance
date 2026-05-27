@@ -42,7 +42,9 @@ export type BlockData = {
 /** Projected args consumed by the workflow. */
 export type BlockArgs = {
   abundanceRef: PlRef;
-  metrics: Metric[];
+  // `isExpanded` is UI-only and deliberately excluded so toggling a metric
+  // section doesn't change args (and re-activate the Run button).
+  metrics: Omit<Metric, "isExpanded">[];
 };
 
 /** Pre-V3 args shape, frozen snapshot for `upgradeLegacy`. */
