@@ -22,6 +22,12 @@ watch(
   (modality) => {
     if (!modality) return;
     if (app.model.data.lastAppliedModality === modality) return;
+    // Just needed for block update from non-modality aware version
+    // @TODO; Remove once non-modality aware block versions are not used (2026-05-27)
+    if (app.model.data.lastAppliedModality === undefined && modality === "antibody_tcr") {
+      app.model.data.lastAppliedModality = "antibody_tcr";
+      return;
+    }
     app.model.data.metrics =
       modality === "peptide" ? createPeptideMetrics() : createDefaultMetrics();
     app.model.data.lastAppliedModality = modality;
