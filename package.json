@@ -23,5 +23,5 @@
     "@platforma-sdk/blocks-deps-updater": "catalog:",
     "turbo": "catalog:"
   },
-  "packageManager": "pnpm@10.33.2"
+  "packageManager": "pnpm@9.14.4"
 }

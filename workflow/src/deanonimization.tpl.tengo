@@ -37,7 +37,7 @@ buildReplaceExpression := func(colExpr, mapping) {
 	return whenExpr.otherwise(colExpr)
 }
 
-getMetricLabel := func(mt) {
+getMetricLabel := func(mt, isPeptide) {
 	if mt == "F1" {
 		return "F1 overlap"
 	} else if mt == "F2" {
@@ -49,12 +49,20 @@ getMetricLabel := func(mt) {
 	} else if mt == "correlation" {
 		return "Correlation"
 	} else if mt == "sharedClonotypes" {
-		return "Shared clonotypes"
+		return isPeptide ? "Shared peptides" : "Shared clonotypes"
 	}
 	return mt
 }
 
-getIntersectionLabel := func(intersection) {
+getIntersectionLabel := func(intersection, isPeptide) {
+	if isPeptide {
+		if intersection == "CDR3nt" {
+			return "Peptide nucleotide"
+		} else if intersection == "CDR3aa" {
+			return "Peptide amino acid"
+		}
+		return intersection
+	}
 	if intersection == "CDR3ntVJ" {
 		return "CDR3 nucleotide + V/J genes"
 	} else if intersection == "CDR3aaVJ" {
@@ -67,20 +75,22 @@ getIntersectionLabel := func(intersection) {
 	return intersection
 }
 
-buildMetricMapping := func(metrics) {
+buildMetricMapping := func(metrics, isPeptide) {
 	mapping := {}
 	for m in metrics {
 		if is_undefined(m) || is_undefined(m.type) || is_undefined(m.intersection) {
 			continue
 		}
 		raw := m.type + " " + m.intersection
-		friendly := getMetricLabel(m.type) + " - " + getIntersectionLabel(m.intersection)
+		friendly := getMetricLabel(m.type, isPeptide) + " - " + getIntersectionLabel(m.intersection, isPeptide)
 		mapping[raw] = friendly
 	}
 	return mapping
 }
 
 self.body(func(args) {
+	isPeptide := args.isPeptide == true
+
 	// Get mapping JSON and print it
 	mappingJson := undefined
 	if smart.isResource(args.mapping) {
@@ -112,7 +122,7 @@ self.body(func(args) {
 			buildReplaceExpression(pt.col("sample2"), mappingJson).alias("sample2"),
 			buildReplaceExpression(
 				pt.col("metric"),
-				buildMetricMapping(is_undefined(args.metrics) ? [] : args.metrics)
+				buildMetricMapping(is_undefined(args.metrics) ? [] : args.metrics, isPeptide)
 			).alias("metric")
 		)
 		

@@ -20,19 +20,19 @@ function getDefaultOptions(heatmapPCols?: PColumnIdAndSpec[]) {
   const defaults: GraphMakerProps["defaultOptions"] = [
     {
       inputName: "x",
-      selectedSource: heatmapPCols[getIndex("pl7.app/vdj/overlap", heatmapPCols)].spec.axesSpec[0],
+      selectedSource: heatmapPCols[getIndex("pl7.app/overlap", heatmapPCols)].spec.axesSpec[0],
     },
     {
       inputName: "y",
-      selectedSource: heatmapPCols[getIndex("pl7.app/vdj/overlap", heatmapPCols)].spec.axesSpec[1],
+      selectedSource: heatmapPCols[getIndex("pl7.app/overlap", heatmapPCols)].spec.axesSpec[1],
     },
     {
       inputName: "value",
-      selectedSource: heatmapPCols[getIndex("pl7.app/vdj/overlap", heatmapPCols)].spec,
+      selectedSource: heatmapPCols[getIndex("pl7.app/overlap", heatmapPCols)].spec,
     },
     {
       inputName: "tabBy",
-      selectedSource: heatmapPCols[getIndex("pl7.app/vdj/overlap", heatmapPCols)].spec.axesSpec[2],
+      selectedSource: heatmapPCols[getIndex("pl7.app/overlap", heatmapPCols)].spec.axesSpec[2],
     },
   ];
 

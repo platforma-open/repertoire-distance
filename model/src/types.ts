@@ -29,6 +29,13 @@ export type BlockData = {
    * pool there.
    */
   datasetLabel?: string;
+  /**
+   * Modality the current `metrics` were seeded for. Set by the UI watcher that
+   * reseeds defaults when the input modality changes (VDJ ↔ peptide). Stays
+   * undefined on first input — the watcher treats that as a one-time adoption
+   * pass so legacy V1 → V3 upgrades don't lose user-customized metrics.
+   */
+  lastAppliedModality?: "antibody_tcr" | "peptide";
   graphState: GraphMakerState;
 };
 

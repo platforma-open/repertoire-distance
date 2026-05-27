@@ -1,17 +1,33 @@
 <script setup lang="ts">
+import {
+  createDefaultMetrics,
+  createPeptideMetrics,
+} from "@platforma-open/milaboratories.repertoire-distance-2.model";
 import type { PlRef } from "@platforma-sdk/model";
-import { plRefsEqual } from "@platforma-sdk/model";
-import { PlDropdownRef, PlElementList, PlBtnSecondary, PlAlert } from "@platforma-sdk/ui-vue";
-import { getRawPlatformaInstance } from "@platforma-sdk/model";
+import { getRawPlatformaInstance, plRefsEqual } from "@platforma-sdk/model";
+import { PlAlert, PlBtnSecondary, PlDropdownRef, PlElementList } from "@platforma-sdk/ui-vue";
 import { asyncComputed } from "@vueuse/core";
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import { useApp } from "../app";
-import { getMetricDisplayName } from "./util";
 import DistanceCard from "./DistanceCard.vue";
 import { useMetrics } from "./metrics";
+import { getMetricDisplayName } from "./util";
 
 const app = useApp();
 const { metrics, addMetric } = useMetrics();
+
+// Re-seed metric defaults to match the input modality.
+watch(
+  () => app.model.outputs.modality,
+  (modality) => {
+    if (!modality) return;
+    if (app.model.data.lastAppliedModality === modality) return;
+    app.model.data.metrics =
+      modality === "peptide" ? createPeptideMetrics() : createDefaultMetrics();
+    app.model.data.lastAppliedModality = modality;
+  },
+  { immediate: true },
+);
 
 const abundanceRefModel = computed({
   get: () => app.model.data.abundanceRef,
@@ -57,7 +73,7 @@ const isEmpty = asyncComputed(async () => {
     style="width: 360px; max-width: 100%"
   >
     <template #item-title="{ item }">
-      {{ getMetricDisplayName(item.type) }}
+      {{ getMetricDisplayName(item.type, app.model.outputs.modality) }}
     </template>
     <template #item-content="{ index }">
       <DistanceCard v-model="metrics[index]" />
