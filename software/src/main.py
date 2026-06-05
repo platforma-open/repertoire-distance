@@ -219,7 +219,10 @@ def compute_metrics_wide(df_original, metric_configs, is_single_cell_data, cols)
         for sid in sample_ids:
             sample_df = df[df['sampleId'] == sid]
             if len(sample_df) > 0:
-                sample_clone_dict[sid] = sample_df.set_index('cloneKey')['cloneFraction'].to_dict()
+                # Sum fractions of rows that share a cloneKey: under coarser intersections
+                # (e.g. CDR3aa) several raw clonotypes collapse to one key, and their
+                # repertoire fractions must add rather than overwrite each other.
+                sample_clone_dict[sid] = sample_df.groupby('cloneKey')['cloneFraction'].sum().to_dict()
             else:
                 sample_clone_dict[sid] = {}
         sample_cloneset_dict = {sid: set(clones.keys()) for sid, clones in sample_clone_dict.items()}
