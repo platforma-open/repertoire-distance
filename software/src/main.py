@@ -101,33 +101,37 @@ def get_bulk_columns(modality):
     return {'aa': 'CDR3aa', 'nt': 'CDR3nt', 'v': 'VGene', 'j': 'JGene'}
 
 
-# ---------- Clone Key Builder ----------
-def make_clone_key(row, intersection_type, is_single_cell_data, cols):
+# ---------- Sequence / Clone Key Builders ----------
+def get_sequence_columns(intersection_type, is_single_cell_data, cols):
+    """
+    CDR3 sequence column(s) that a given intersection keys on.
+    """
+    if intersection_type not in ('CDR3ntVJ', 'CDR3aaVJ', 'CDR3nt', 'CDR3aa'):
+        raise ValueError(f"Unsupported intersection_type: {intersection_type}")
+
+    use_aa = intersection_type in ('CDR3aa', 'CDR3aaVJ')
     if is_single_cell_data:
-        # Single-cell data: always use both chains for these intersection types
-        if intersection_type == 'CDR3ntVJ':
-            return f"{row['CDR3nt_A']}|{row['CDR3nt_B']}|{row['VGene_A']}|{row['VGene_B']}|{row['JGene_A']}|{row['JGene_B']}"
-        elif intersection_type == 'CDR3aaVJ':
-            return f"{row['CDR3aa_A']}|{row['CDR3aa_B']}|{row['VGene_A']}|{row['VGene_B']}|{row['JGene_A']}|{row['JGene_B']}"
-        elif intersection_type == 'CDR3nt':
-            return f"{row['CDR3nt_A']}|{row['CDR3nt_B']}"
-        elif intersection_type == 'CDR3aa':
-            return f"{row['CDR3aa_A']}|{row['CDR3aa_B']}"
+        # Single-cell data: always use both chains
+        return ['CDR3aa_A', 'CDR3aa_B'] if use_aa else ['CDR3nt_A', 'CDR3nt_B']
+    # Bulk data: read the sequence column via the modality-specific name map.
+    return [cols['aa']] if use_aa else [cols['nt']]
+
+
+def make_clone_key(row, intersection_type, is_single_cell_data, cols):
+    # Sequence part: exactly the column(s) the missing-sequence filter validates,
+    # so a key is only ever built for rows whose sequence is present.
+    seq_cols = get_sequence_columns(intersection_type, is_single_cell_data, cols)
+    key = '|'.join(str(row[c]) for c in seq_cols)
+
+    # VJ intersections additionally key on the V and J genes.
+    if intersection_type in ('CDR3ntVJ', 'CDR3aaVJ'):
+        if is_single_cell_data:
+            # Single-cell data: always use both chains
+            key += f"|{row['VGene_A']}|{row['VGene_B']}|{row['JGene_A']}|{row['JGene_B']}"
         else:
-            raise ValueError(f"Unsupported intersection_type for single-cell data: {intersection_type}")
-    else:
-        # Bulk data: read sequence/gene columns via the modality-specific name map.
-        aa, nt, v, j = cols['aa'], cols['nt'], cols.get('v'), cols.get('j')
-        if intersection_type == 'CDR3ntVJ':
-            return f"{row[nt]}|{row[v]}|{row[j]}"
-        elif intersection_type == 'CDR3aaVJ':
-            return f"{row[aa]}|{row[v]}|{row[j]}"
-        elif intersection_type == 'CDR3nt':
-            return row[nt]
-        elif intersection_type == 'CDR3aa':
-            return row[aa]
-        else:
-            raise ValueError(f"Unsupported intersection_type for bulk data: {intersection_type}")
+            # Bulk data: read gene columns via the modality-specific name map.
+            key += f"|{row[cols['v']]}|{row[cols['j']]}"
+    return key
 
 # ---------- Metric Calculation ----------
 def compute_metric(s1, s2, clones1, clones2, set1, set2, metric):
@@ -203,6 +207,10 @@ def compute_metrics_wide(df_original, metric_configs, is_single_cell_data, cols)
         
         # Step 1: build cloneKey once
         df = df_down.copy()
+        # Drop clonotypes missing the CDR3 sequence (amplicon alignment outputs)
+        for seq_col in get_sequence_columns(intersection, is_single_cell_data, cols):
+            if seq_col in df.columns:
+                df = df[df[seq_col].notna() & (df[seq_col] != '')]
         df['cloneKey'] = df.apply(lambda row: make_clone_key(row, intersection, is_single_cell_data, cols), axis=1)
         df = df[['sampleId', 'cloneKey', 'fractionOfReads']].rename(columns={'fractionOfReads': 'cloneFraction'})
 
