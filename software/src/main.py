@@ -117,21 +117,25 @@ def get_sequence_columns(intersection_type, is_single_cell_data, cols):
     return [cols['aa']] if use_aa else [cols['nt']]
 
 
-def make_clone_key(row, intersection_type, is_single_cell_data, cols):
-    # Sequence part: exactly the column(s) the missing-sequence filter validates,
-    # so a key is only ever built for rows whose sequence is present.
+def build_clone_keys(df, intersection_type, is_single_cell_data, cols):
+    # Vectorized clone-key construction over the whole frame NaN-safety depends
+    # on the upstream filters having already run
     seq_cols = get_sequence_columns(intersection_type, is_single_cell_data, cols)
-    key = '|'.join(str(row[c]) for c in seq_cols)
+    keys = df[seq_cols[0]].astype(str)
+    for col in seq_cols[1:]:
+        keys = keys + '|' + df[col].astype(str)
 
     # VJ intersections additionally key on the V and J genes.
     if intersection_type in ('CDR3ntVJ', 'CDR3aaVJ'):
         if is_single_cell_data:
             # Single-cell data: always use both chains
-            key += f"|{row['VGene_A']}|{row['VGene_B']}|{row['JGene_A']}|{row['JGene_B']}"
+            gene_cols = ['VGene_A', 'VGene_B', 'JGene_A', 'JGene_B']
         else:
             # Bulk data: read gene columns via the modality-specific name map.
-            key += f"|{row[cols['v']]}|{row[cols['j']]}"
-    return key
+            gene_cols = [cols['v'], cols['j']]
+        for col in gene_cols:
+            keys = keys + '|' + df[col].astype(str)
+    return keys
 
 # ---------- Metric Calculation ----------
 def compute_metric(s1, s2, clones1, clones2, set1, set2, metric):
@@ -211,7 +215,7 @@ def compute_metrics_wide(df_original, metric_configs, is_single_cell_data, cols)
         for seq_col in get_sequence_columns(intersection, is_single_cell_data, cols):
             if seq_col in df.columns:
                 df = df[df[seq_col].notna() & (df[seq_col] != '')]
-        df['cloneKey'] = df.apply(lambda row: make_clone_key(row, intersection, is_single_cell_data, cols), axis=1)
+        df['cloneKey'] = build_clone_keys(df, intersection, is_single_cell_data, cols)
         df = df[['sampleId', 'cloneKey', 'fractionOfReads']].rename(columns={'fractionOfReads': 'cloneFraction'})
 
         # Build sample_clone_dict in deterministic order (sorted by sampleId)
