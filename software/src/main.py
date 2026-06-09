@@ -101,33 +101,41 @@ def get_bulk_columns(modality):
     return {'aa': 'CDR3aa', 'nt': 'CDR3nt', 'v': 'VGene', 'j': 'JGene'}
 
 
-# ---------- Clone Key Builder ----------
-def make_clone_key(row, intersection_type, is_single_cell_data, cols):
+# ---------- Sequence / Clone Key Builders ----------
+def get_sequence_columns(intersection_type, is_single_cell_data, cols):
+    """
+    CDR3 sequence column(s) that a given intersection keys on.
+    """
+    if intersection_type not in ('CDR3ntVJ', 'CDR3aaVJ', 'CDR3nt', 'CDR3aa'):
+        raise ValueError(f"Unsupported intersection_type: {intersection_type}")
+
+    use_aa = intersection_type in ('CDR3aa', 'CDR3aaVJ')
     if is_single_cell_data:
-        # Single-cell data: always use both chains for these intersection types
-        if intersection_type == 'CDR3ntVJ':
-            return f"{row['CDR3nt_A']}|{row['CDR3nt_B']}|{row['VGene_A']}|{row['VGene_B']}|{row['JGene_A']}|{row['JGene_B']}"
-        elif intersection_type == 'CDR3aaVJ':
-            return f"{row['CDR3aa_A']}|{row['CDR3aa_B']}|{row['VGene_A']}|{row['VGene_B']}|{row['JGene_A']}|{row['JGene_B']}"
-        elif intersection_type == 'CDR3nt':
-            return f"{row['CDR3nt_A']}|{row['CDR3nt_B']}"
-        elif intersection_type == 'CDR3aa':
-            return f"{row['CDR3aa_A']}|{row['CDR3aa_B']}"
+        # Single-cell data: always use both chains
+        return ['CDR3aa_A', 'CDR3aa_B'] if use_aa else ['CDR3nt_A', 'CDR3nt_B']
+    # Bulk data: read the sequence column via the modality-specific name map.
+    return [cols['aa']] if use_aa else [cols['nt']]
+
+
+def build_clone_keys(df, intersection_type, is_single_cell_data, cols):
+    # Vectorized clone-key construction over the whole frame NaN-safety depends
+    # on the upstream filters having already run
+    seq_cols = get_sequence_columns(intersection_type, is_single_cell_data, cols)
+    keys = df[seq_cols[0]].astype(str)
+    for col in seq_cols[1:]:
+        keys = keys + '|' + df[col].astype(str)
+
+    # VJ intersections additionally key on the V and J genes.
+    if intersection_type in ('CDR3ntVJ', 'CDR3aaVJ'):
+        if is_single_cell_data:
+            # Single-cell data: always use both chains
+            gene_cols = ['VGene_A', 'VGene_B', 'JGene_A', 'JGene_B']
         else:
-            raise ValueError(f"Unsupported intersection_type for single-cell data: {intersection_type}")
-    else:
-        # Bulk data: read sequence/gene columns via the modality-specific name map.
-        aa, nt, v, j = cols['aa'], cols['nt'], cols.get('v'), cols.get('j')
-        if intersection_type == 'CDR3ntVJ':
-            return f"{row[nt]}|{row[v]}|{row[j]}"
-        elif intersection_type == 'CDR3aaVJ':
-            return f"{row[aa]}|{row[v]}|{row[j]}"
-        elif intersection_type == 'CDR3nt':
-            return row[nt]
-        elif intersection_type == 'CDR3aa':
-            return row[aa]
-        else:
-            raise ValueError(f"Unsupported intersection_type for bulk data: {intersection_type}")
+            # Bulk data: read gene columns via the modality-specific name map.
+            gene_cols = [cols['v'], cols['j']]
+        for col in gene_cols:
+            keys = keys + '|' + df[col].astype(str)
+    return keys
 
 # ---------- Metric Calculation ----------
 def compute_metric(s1, s2, clones1, clones2, set1, set2, metric):
@@ -203,7 +211,11 @@ def compute_metrics_wide(df_original, metric_configs, is_single_cell_data, cols)
         
         # Step 1: build cloneKey once
         df = df_down.copy()
-        df['cloneKey'] = df.apply(lambda row: make_clone_key(row, intersection, is_single_cell_data, cols), axis=1)
+        # Drop clonotypes missing the CDR3 sequence (amplicon alignment outputs)
+        for seq_col in get_sequence_columns(intersection, is_single_cell_data, cols):
+            if seq_col in df.columns:
+                df = df[df[seq_col].notna() & (df[seq_col] != '')]
+        df['cloneKey'] = build_clone_keys(df, intersection, is_single_cell_data, cols)
         df = df[['sampleId', 'cloneKey', 'fractionOfReads']].rename(columns={'fractionOfReads': 'cloneFraction'})
 
         # Build sample_clone_dict in deterministic order (sorted by sampleId)
@@ -211,7 +223,10 @@ def compute_metrics_wide(df_original, metric_configs, is_single_cell_data, cols)
         for sid in sample_ids:
             sample_df = df[df['sampleId'] == sid]
             if len(sample_df) > 0:
-                sample_clone_dict[sid] = sample_df.set_index('cloneKey')['cloneFraction'].to_dict()
+                # Sum fractions of rows that share a cloneKey: under coarser intersections
+                # (e.g. CDR3aa) several raw clonotypes collapse to one key, and their
+                # repertoire fractions must add rather than overwrite each other.
+                sample_clone_dict[sid] = sample_df.groupby('cloneKey')['cloneFraction'].sum().to_dict()
             else:
                 sample_clone_dict[sid] = {}
         sample_cloneset_dict = {sid: set(clones.keys()) for sid, clones in sample_clone_dict.items()}
