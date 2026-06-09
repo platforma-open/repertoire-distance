@@ -1,5 +1,13 @@
 # @platforma-open/milaboratories.repertoire-distance.software
 
+## 1.4.1
+
+### Patch Changes
+
+- 84af80d: Solve bug related to clonotypes with missing CDR3 sequences
+- 6e649e3: Solve bug related to clonotypes with missing CDR3 sequences
+- 5bbfba7: Solve bug related to clonotypes with missing CDR3 sequences
+
 ## 1.4.0
 
 ### Minor Changes

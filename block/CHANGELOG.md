@@ -1,5 +1,16 @@
 # @platforma-open/milaboratories.repertoire-distance
 
+## 2.3.1
+
+### Patch Changes
+
+- 6e649e3: Solve bug related to clonotypes with missing CDR3 sequences
+- 5bbfba7: Solve bug related to clonotypes with missing CDR3 sequences
+- Updated dependencies [6e649e3]
+  - @platforma-open/milaboratories.repertoire-distance-2.model@1.6.1
+  - @platforma-open/milaboratories.repertoire-distance-2.ui@1.5.1
+  - @platforma-open/milaboratories.repertoire-distance-2.workflow@1.4.1
+
 ## 2.3.0
 
 ### Minor Changes

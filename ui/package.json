@@ -1,6 +1,6 @@
 {
   "name": "@platforma-open/milaboratories.repertoire-distance-2.ui",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "type": "module",
   "scripts": {
     "fmt": "ts-builder format",
