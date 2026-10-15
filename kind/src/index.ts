@@ -39,6 +39,8 @@ export {
  */
 export type BlockParams = {
   abundanceRef?: PlRef;
+  /** A subset column (`pl7.app/isSubset`) the abundance is restricted to before the analysis. */
+  filterRef?: PlRef;
   metrics?: MetricUI[];
   lastAppliedModality?: Modality;
   customBlockLabel?: string;
@@ -48,11 +50,16 @@ export type BlockParams = {
 function parseInitializationParams(value: unknown): BlockParams {
   assertParamsObject(value);
 
-  const { abundanceRef, metrics, lastAppliedModality, customBlockLabel } = value;
+  const { abundanceRef, filterRef, metrics, lastAppliedModality, customBlockLabel } = value;
 
   if (abundanceRef !== undefined && !isPlRef(abundanceRef)) {
     throw new Error(
       "'abundanceRef' must be a reference to an upstream column, written as { block, name }.",
+    );
+  }
+  if (filterRef !== undefined && !isPlRef(filterRef)) {
+    throw new Error(
+      "'filterRef' must be a reference to an upstream subset column, written as { block, name }.",
     );
   }
   if (customBlockLabel !== undefined && typeof customBlockLabel !== "string") {
@@ -65,6 +72,7 @@ function parseInitializationParams(value: unknown): BlockParams {
 
   return {
     abundanceRef,
+    filterRef,
     metrics,
     lastAppliedModality: lastAppliedModality as Modality | undefined,
     customBlockLabel,

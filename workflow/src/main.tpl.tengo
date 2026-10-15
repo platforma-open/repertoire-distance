@@ -8,6 +8,7 @@ pSpec := import("@platforma-sdk/workflow-tengo:pframes.spec")
 maps := import("@platforma-sdk/workflow-tengo:maps")
 anonymization := import("@platforma-sdk/workflow-tengo:anonymize")
 helpers := import(":helpers")
+json := import("json")
 
 runDistanceTpl := assets.importTemplate(":run-distance")
 deanonimizationTpl := assets.importTemplate(":deanonimization")
@@ -39,6 +40,11 @@ wf.prepare(func(args) {
 		axes: [{anchor: "main", idx: 1}]
 	}, "genes")
 
+	// Optional subset column picked alongside the abundance (PlDatasetSelector)
+	if !is_undefined(args.inputFilter) {
+		bundleBuilder.addRef(json.decode(args.inputFilter))
+	}
+
 	return  {
 		columns: bundleBuilder.build()
 	}
@@ -62,10 +68,33 @@ wf.body(func(args) {
 	anonymizedAbundanceData := anonymizationResult.output("anonymizedData")
 	mappingRef := anonymizationResult.output("mapping")
 
-	table := pframes.tsvFileBuilder()
+	// Optional subset: only its clonotypes enter the distances. The trace roots in the filter
+	// so downstream labels name it.
+	filterColumn := undefined
+	traceSpec := abundanceSpec
+	if !is_undefined(args.inputFilter) {
+		f := columns.getColumn(json.decode(args.inputFilter))
+		filterColumn = { spec: f.spec, data: f.data }
+		traceSpec = f.spec
+	}
+
+	// Without a subset, the plain builder (unfiltered runs unchanged). With one, the abundance
+	// is the filtered primary and sequences and genes fill its rows.
+	table := is_undefined(filterColumn) ? pframes.tsvFileBuilder() : pframes.tableBuilder("tsv").setColumnJoin("left")
+	addColumn := undefined
 
 	table.setAxisHeader("pl7.app/sampleId", "sampleId")
-	table.add({ spec: abundanceColumn.spec, data: anonymizedAbundanceData }, {header: "count"})
+	if is_undefined(filterColumn) {
+		table.add({ spec: abundanceColumn.spec, data: anonymizedAbundanceData }, {header: "count"})
+		addColumn = table.add
+	} else {
+		table.addPrimary("main", {
+			__isPrimaryRef: "v1",
+			column: { spec: abundanceColumn.spec, data: anonymizedAbundanceData },
+			filter: filterColumn
+		}, {header: "count"})
+		addColumn = table.addColumn
+	}
 
 	// Sequences share the same per-row axis (clonotypeKey / scClonotypeKey / variantKey) as
 	// abundance, so they pick up the anonymized sampleId when the TSV is built. Branch on
@@ -78,7 +107,7 @@ wf.body(func(args) {
 		for seqColumn in columns.getColumns("peptideSequences") {
 			alphabet := seqColumn.spec.domain["pl7.app/alphabet"]
 			header := (alphabet == "aminoacid") ? "PEPTIDEaa" : "PEPTIDEnt"
-			table.add(seqColumn, {header: header})
+			addColumn(seqColumn, {header: header})
 		}
 	} else {
 		for seqColumn in columns.getColumns("vdjSequences") {
@@ -87,10 +116,10 @@ wf.body(func(args) {
 					chain := seqColumn.spec.domain["pl7.app/vdj/scClonotypeChain"]
 					alphabet := seqColumn.spec.domain["pl7.app/alphabet"]
 					alphabetShort := (alphabet == "aminoacid") ? "aa" : "nt"
-					table.add(seqColumn, {header: "CDR3 " + alphabetShort + " " + chain})
+					addColumn(seqColumn, {header: "CDR3 " + alphabetShort + " " + chain})
 				}
 			} else {
-				table.add(seqColumn, {header: seqColumn.spec.annotations["pl7.app/label"]})
+				addColumn(seqColumn, {header: seqColumn.spec.annotations["pl7.app/label"]})
 			}
 		}
 	}
@@ -100,10 +129,10 @@ wf.body(func(args) {
 			if isSingleCell {
 				if geneColumn.spec.domain["pl7.app/vdj/scClonotypeChain/index"] == "primary" {
 					chain := geneColumn.spec.domain["pl7.app/vdj/scClonotypeChain"]
-					table.add(columns.getColumn(geneColumn.key), {header: geneColumn.spec.domain["pl7.app/vdj/reference"] + " " + chain})
+					addColumn(columns.getColumn(geneColumn.key), {header: geneColumn.spec.domain["pl7.app/vdj/reference"] + " " + chain})
 				}
 			} else {
-				table.add(geneColumn, {header: geneColumn.spec.domain["pl7.app/vdj/reference"]})
+				addColumn(geneColumn, {header: geneColumn.spec.domain["pl7.app/vdj/reference"]})
 			}
 		}
 	}
@@ -142,7 +171,7 @@ wf.body(func(args) {
 	)
 
 	trace := pSpec.makeTrace(
-		abundanceSpec,
+		traceSpec,
 		{
 			type: "milaboratories.repertoire-distance",
 			id: blockId,
@@ -157,7 +186,10 @@ wf.body(func(args) {
 	// so the result from xsv.importFile already contains the original sampleIds in the keys
 	for id in maps.getKeys(result) {
 		v := result[id]
-		pf.add(id, trace.inject(v.spec), v.data)
+		spec := trace.inject(v.spec)
+		// A run on a subset says so: its outputs cover only the subset's clonotypes.
+		if !is_undefined(filterColumn) { spec.domain["pl7.app/inputSubset"] = args.inputFilter }
+		pf.add(id, spec, v.data)
 	}
 	pf = pf.build()
 
