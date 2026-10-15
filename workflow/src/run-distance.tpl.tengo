@@ -2,7 +2,6 @@ self := import("@platforma-sdk/workflow-tengo:tpl")
 exec := import("@platforma-sdk/workflow-tengo:exec")
 assets := import("@platforma-sdk/workflow-tengo:assets")
 canonical := import("@platforma-sdk/workflow-tengo:canonical")
-pConstants := import("@platforma-sdk/workflow-tengo:pframes.constants")
 
 distanceSw := assets.importSoftware("@platforma-open/milaboratories.repertoire-distance-2.software:main")
 
