@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { GraphMakerProps } from "@milaboratories/graph-maker";
-import { GraphMaker } from "@milaboratories/graph-maker";
+import { GraphMakerPlugin } from "@milaboratories/graph-maker";
 import type { PColumnIdAndSpec } from "@platforma-sdk/model";
 import { computed } from "vue";
 import { useApp } from "../app";
@@ -44,14 +44,9 @@ const defaultOptions = computed(() => getDefaultOptions(app.model.outputs.heatma
 </script>
 
 <template>
-  <GraphMaker
-    v-model="app.model.data.graphState"
-    chart-type="heatmap"
-    :p-frame="app.model.outputs.pf"
-    :default-options="defaultOptions"
-  >
+  <GraphMakerPlugin :handle="app.plugins.heatmap.handle" :default-options="defaultOptions">
     <template #settingsSlot>
       <Settings />
     </template>
-  </GraphMaker>
+  </GraphMakerPlugin>
 </template>
