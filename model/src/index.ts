@@ -1,15 +1,9 @@
 import type { GraphMakerState } from "@milaboratories/graph-maker";
+import { graphMakerPlugin } from "@milaboratories/graph-maker/plugin";
 import type { MetricUI } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
 import { kind } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
-import type { InferOutputsType, PColumnIdAndSpec, PColumnSpec } from "@platforma-sdk/model";
-import {
-  BlockModelV3,
-  DataModelBuilder,
-  getRelatedColumns,
-  isHiddenFromGraphColumn,
-  isHiddenFromUIColumn,
-  isPColumnSpec,
-} from "@platforma-sdk/model";
+import type { InferOutputsType, PColumnIdAndSpec } from "@platforma-sdk/model";
+import { BlockModelV3, DataModelBuilder, isPColumnSpec } from "@platforma-sdk/model";
 import type { BlockArgs, BlockData, LegacyBlockArgs, LegacyBlockUiState } from "./types";
 
 export * from "./types";
@@ -155,7 +149,33 @@ const blockDataModel = new DataModelBuilder({ kind })
     graphState: defaultGraphState(),
   }));
 
+// The heatmap is a graph-maker plugin instance: it owns its own view state and
+// builds its own PFrame from the columns handed to it as anchors.
+const heatmap = graphMakerPlugin.create({
+  pluginId: "heatmap",
+  config: {
+    chartType: "heatmap",
+    initialTitle: "Distance Analysis",
+    initialTemplate: "heatmap",
+    initialState: {
+      currentTab: "settings",
+      layersSettings: {
+        heatmap: { normalizationDirection: null },
+        heatmapClustered: { normalizationDirection: null },
+      },
+    },
+  },
+});
+
 export const platforma = BlockModelV3.create({ dataModel: blockDataModel, kind })
+
+  // The block's own overlap columns are the anchors; the plugin discovers what
+  // else in the project can be bound to them. The two sample axes carry their
+  // side in `contextDomain`, so a plain sample-metadata column is discovered
+  // once per side and enters the frame qualified for it.
+  .plugin(heatmap, {
+    anchorColumns: (ctx) => ctx.outputs?.resolve("pf")?.getPColumns(),
+  })
 
   .args<BlockArgs>((data) => {
     if (data.abundanceRef === undefined) throw new Error("Abundance dataset is required");
@@ -217,82 +237,12 @@ export const platforma = BlockModelV3.create({ dataModel: blockDataModel, kind }
     ),
   )
 
-  // Same shape as `createPFrameForGraphs`, with the specs rewritten on the way
-  // into the frame.
-  //
-  // The overlap matrix is keyed by two `pl7.app/sampleId` axes, and the "which
-  // side of the pair" marker lives in their `contextDomain`, not their
-  // `domain`. That is what makes sample metadata reach this block at all:
-  // `domain` is matched by exact equality, so a marker placed there would make
-  // both axes unequal to the plain `pl7.app/sampleId` every other block emits,
-  // and `getRelatedColumns` below would find no labels, no metadata columns,
-  // nothing to annotate the heatmap with. `contextDomain` is matched by
-  // kinship instead, so the axes stay canonical for discovery while still
-  // carrying the marker.
-  //
-  // Inside a PFrame, however, axes are joined by exact domain. Left the way
-  // they arrive, the two sides would read as one axis and the matrix would
-  // collapse onto its diagonal. So the marker is folded back into `domain`
-  // here, on the column spec and on every axis, once discovery has already
-  // happened. Both halves are needed: drop the fold and the frame is wrong,
-  // move the marker back into `domain` upstream and the frame is bare.
-  .outputWithStatus("pf", (ctx) => {
-    const pCols = ctx.outputs?.resolve("pf")?.getPColumns();
-    if (pCols == null || pCols?.some((v) => v.data === undefined)) return undefined;
-
-    const suitableSpec = (spec: PColumnSpec) =>
-      !isHiddenFromUIColumn(spec) && !isHiddenFromGraphColumn(spec);
-
-    return ctx.createPFrame(
-      getRelatedColumns(ctx, { predicate: suitableSpec, columns: pCols }).map((c) => {
-        return {
-          ...c,
-          spec: {
-            ...c.spec,
-            domain: {
-              ...c.spec.domain,
-              ...c.spec.contextDomain,
-            },
-            axesSpec: c.spec.axesSpec.map((axis) => {
-              return {
-                ...axis,
-                domain: {
-                  ...axis.domain,
-                  ...axis.contextDomain,
-                },
-              };
-            }),
-          },
-        };
-      }),
-    );
-  })
-
+  // Specs as the plugin's frame holds them: the side marker stays in
+  // `contextDomain`, which is what the UI's default options are matched by.
   .output("heatmapPCols", (ctx) => {
     const pCols = ctx.outputs?.resolve("pf")?.getPColumns();
     if (pCols === undefined) return undefined;
-    return pCols.map(
-      (c) =>
-        ({
-          columnId: c.id,
-          spec: {
-            ...c.spec,
-            domain: {
-              ...c.spec.domain,
-              ...c.spec.contextDomain,
-            },
-            axesSpec: c.spec.axesSpec.map((axis) => {
-              return {
-                ...axis,
-                domain: {
-                  ...axis.domain,
-                  ...axis.contextDomain,
-                },
-              };
-            }),
-          },
-        }) satisfies PColumnIdAndSpec,
-    );
+    return pCols.map((c) => ({ columnId: c.id, spec: c.spec }) satisfies PColumnIdAndSpec);
   })
 
   .output("overlapMetricTable", (ctx) => {
