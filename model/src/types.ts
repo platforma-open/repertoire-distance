@@ -12,10 +12,12 @@ import type { PlRef } from "@platforma-sdk/model";
 /** Unified V3 data: persisted state shaped on the UI's terms. */
 export type BlockData = {
   abundanceRef?: PlRef;
+  /** Subset column picked with the abundance in PlDatasetSelector (e.g. a Repertoire Labeling label). */
+  filterRef?: PlRef;
   metrics: MetricUI[];
   customBlockLabel: string;
   /**
-   * Human-readable label of the chosen abundance dataset, snapshotted by the
+   * Human-readable label of the chosen abundance dataset (or subset), snapshotted by the
    * UI in the same gesture that picks `abundanceRef`. Consumed by `.subtitle`
    * so the default block label can be shown without re-querying the result
    * pool there.
@@ -34,6 +36,7 @@ export type BlockData = {
 /** Projected args consumed by the workflow. */
 export type BlockArgs = {
   abundanceRef: PlRef;
+  inputFilter?: string;
   // `isExpanded` is UI-only and deliberately excluded so toggling a metric
   // section doesn't change args (and re-activate the Run button).
   metrics: Metric[];

@@ -1,9 +1,16 @@
 import type { GraphMakerState } from "@milaboratories/graph-maker";
 import type { MetricUI } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
 import { kind } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
-import type { InferOutputsType, PColumnIdAndSpec, PColumnSpec } from "@platforma-sdk/model";
+import type {
+  DatasetOption,
+  InferOutputsType,
+  PColumnIdAndSpec,
+  PColumnSpec,
+} from "@platforma-sdk/model";
 import {
   BlockModelV3,
+  buildDatasetOptions,
+  createGlobalPObjectId,
   DataModelBuilder,
   getRelatedColumns,
   isHiddenFromGraphColumn,
@@ -148,6 +155,7 @@ const blockDataModel = new DataModelBuilder({ kind })
   // dataset options once they resolve.
   .init(({ params }) => ({
     abundanceRef: params?.abundanceRef,
+    filterRef: params?.filterRef,
     metrics: params?.metrics ?? createDefaultMetrics(),
     lastAppliedModality: params?.lastAppliedModality,
     customBlockLabel: params?.customBlockLabel ?? "",
@@ -166,6 +174,9 @@ export const platforma = BlockModelV3.create({ dataModel: blockDataModel, kind }
     }
     return {
       abundanceRef: data.abundanceRef,
+      ...(data.filterRef !== undefined && {
+        inputFilter: createGlobalPObjectId(data.filterRef.blockId, data.filterRef.name),
+      }),
       // Project only the fields the workflow consumes. `isExpanded` is UI-only
       // (metric section open/closed) — including it would make expand/collapse
       // change args and re-activate the Run button.
@@ -184,37 +195,46 @@ export const platforma = BlockModelV3.create({ dataModel: blockDataModel, kind }
   // options, and `graphState` is heatmap view state.
   .templateParams((data) => ({
     abundanceRef: data.abundanceRef,
+    filterRef: data.filterRef,
     metrics: data.metrics,
     lastAppliedModality: data.lastAppliedModality,
     customBlockLabel: data.customBlockLabel,
   }))
 
-  .output("abundanceOptions", (ctx) =>
-    ctx.resultPool.getOptions(
-      (spec) => {
-        if (!isPColumnSpec(spec)) return false;
+  // Each abundance carries its subset columns (e.g. Repertoire Labeling labels) as filters.
+  .output(
+    "abundanceOptions",
+    (ctx): DatasetOption[] =>
+      buildDatasetOptions(ctx, {
+        primary: (spec) => {
+          if (!isPColumnSpec(spec)) return false;
 
-        // Check basic abundance criteria
-        const hasCorrectAnnotations =
-          spec.annotations?.["pl7.app/isAbundance"] === "true" &&
-          spec.annotations?.["pl7.app/abundance/normalized"] === "false" &&
-          spec.annotations?.["pl7.app/abundance/isPrimary"] === "true";
+          // Check basic abundance criteria
+          const hasCorrectAnnotations =
+            spec.annotations?.["pl7.app/isAbundance"] === "true" &&
+            spec.annotations?.["pl7.app/abundance/normalized"] === "false" &&
+            spec.annotations?.["pl7.app/abundance/isPrimary"] === "true";
 
-        // Check axes structure
-        const hasCorrectAxes =
-          spec.axesSpec?.length >= 2 && spec.axesSpec[0]?.name === "pl7.app/sampleId";
+          // Check axes structure
+          const hasCorrectAxes =
+            spec.axesSpec?.length >= 2 && spec.axesSpec[0]?.name === "pl7.app/sampleId";
 
-        // Filter out clustered abundance.
-        const axis1Domain = spec.axesSpec?.[1]?.domain;
-        const hasClusteringAlgorithm =
-          // @TODO; Remove 'vdj' case once block versions with old namespace are not used (2026-05-27)
-          axis1Domain?.["pl7.app/clustering/algorithm"] !== undefined ||
-          axis1Domain?.["pl7.app/vdj/clustering/algorithm"] !== undefined;
+          // Filter out clustered abundance.
+          const axis1Domain = spec.axesSpec?.[1]?.domain;
+          const hasClusteringAlgorithm =
+            // @TODO; Remove 'vdj' case once block versions with old namespace are not used (2026-05-27)
+            axis1Domain?.["pl7.app/clustering/algorithm"] !== undefined ||
+            axis1Domain?.["pl7.app/vdj/clustering/algorithm"] !== undefined;
 
-        return hasCorrectAnnotations && hasCorrectAxes && !hasClusteringAlgorithm;
-      },
-      { label: { includeNativeLabel: false } },
-    ),
+          return hasCorrectAnnotations && hasCorrectAxes && !hasClusteringAlgorithm;
+        },
+        // Only subsets keyed by the clonotype axis alone: a sample subset would drop whole samples.
+        filter: (spec) =>
+          isPColumnSpec(spec) &&
+          spec.axesSpec.length === 1 &&
+          spec.axesSpec[0].name !== "pl7.app/sampleId",
+        requireEnrichments: false,
+      }) ?? [],
   )
 
   // Same shape as `createPFrameForGraphs`, with the specs rewritten on the way
