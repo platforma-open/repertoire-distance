@@ -1,5 +1,5 @@
 import type { GraphMakerState } from "@milaboratories/graph-maker";
-import { graphMakerPlugin } from "@milaboratories/graph-maker/plugin";
+import { flattenColumnContextDomain, graphMakerPlugin } from "@milaboratories/graph-maker/plugin";
 import type { MetricUI } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
 import { kind } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
 import type { InferOutputsType, PColumnIdAndSpec } from "@platforma-sdk/model";
@@ -237,12 +237,20 @@ export const platforma = BlockModelV3.create({ dataModel: blockDataModel, kind }
     ),
   )
 
-  // Specs as the plugin's frame holds them: the side marker stays in
-  // `contextDomain`, which is what the UI's default options are matched by.
+  // Specs as the plugin's frame holds them, which is not how the workflow wrote
+  // them: the plugin moves an axis role out of `contextDomain` and into
+  // `domain`. The UI builds its default options from these, so describing the
+  // axes any other way asks the chart for axes the frame does not have.
   .output("heatmapPCols", (ctx) => {
     const pCols = ctx.outputs?.resolve("pf")?.getPColumns();
     if (pCols === undefined) return undefined;
-    return pCols.map((c) => ({ columnId: c.id, spec: c.spec }) satisfies PColumnIdAndSpec);
+    return pCols.map(
+      (c) =>
+        ({
+          columnId: c.id,
+          spec: flattenColumnContextDomain(c.spec),
+        }) satisfies PColumnIdAndSpec,
+    );
   })
 
   .output("overlapMetricTable", (ctx) => {
