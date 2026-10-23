@@ -171,7 +171,6 @@ const blockDataModel = new DataModelBuilder({ kind })
   // columns in a frame built the old way — so it is left to `defaultOptions`.
   .transfer(heatmap, (data) => ({
     state: transferableGraphState(data.graphState),
-    selection: undefined,
     chartType: "heatmap" as const,
     readonlyInputs: [],
     allowChartDeleting: false,
