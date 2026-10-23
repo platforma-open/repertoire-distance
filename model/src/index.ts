@@ -1,5 +1,9 @@
 import type { GraphMakerState } from "@milaboratories/graph-maker";
-import { flattenColumnContextDomain, graphMakerPlugin } from "@milaboratories/graph-maker/plugin";
+import {
+  flattenColumnContextDomain,
+  graphMakerPlugin,
+  transferableGraphState,
+} from "@milaboratories/graph-maker/plugin";
 import type { MetricUI } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
 import { kind } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
 import type { DatasetOption, InferOutputsType, PColumnIdAndSpec } from "@platforma-sdk/model";
@@ -130,6 +134,26 @@ function parseLegacyDatasetLabel(legacy: string | undefined): string | undefined
   return legacy.slice(LEGACY_TITLE_PREFIX.length).trim() || undefined;
 }
 
+// The heatmap is a graph-maker plugin instance: it owns its own view state and
+// builds its own PFrame from the columns handed to it as anchors.
+const heatmap = graphMakerPlugin.create({
+  pluginId: "heatmap",
+  // Where a chart saved before the plugin enters the chain.
+  transferAt: "v1",
+  config: {
+    chartType: "heatmap",
+    initialTitle: "Distance Analysis",
+    initialTemplate: "heatmap",
+    initialState: {
+      currentTab: "settings",
+      layersSettings: {
+        heatmap: { normalizationDirection: null },
+        heatmapClustered: { normalizationDirection: null },
+      },
+    },
+  },
+});
+
 const blockDataModel = new DataModelBuilder({ kind })
   .from<BlockData>("V20260519")
   .upgradeLegacy<LegacyBlockArgs, LegacyBlockUiState>(({ args, uiState }) => ({
@@ -141,6 +165,17 @@ const blockDataModel = new DataModelBuilder({ kind })
     datasetLabel: parseLegacyDatasetLabel(uiState?.blockTitle),
     lastAppliedModality: "antibody_tcr",
     graphState: uiState?.graphState ?? defaultGraphState(),
+  }))
+  // A chart saved before the heatmap became a plugin instance: hand the plugin
+  // what survives the move. The data mapping does not — the old ids name
+  // columns in a frame built the old way — so it is left to `defaultOptions`.
+  .transfer(heatmap, (data) => ({
+    state: transferableGraphState(data.graphState),
+    selection: undefined,
+    chartType: "heatmap" as const,
+    readonlyInputs: [],
+    allowChartDeleting: false,
+    allowTitleEditing: false,
   }))
   // A block created from a template starts on the params its kind accepted;
   // one created by hand gets the default metric set and an unpicked input.
@@ -155,24 +190,6 @@ const blockDataModel = new DataModelBuilder({ kind })
     datasetLabel: undefined,
     graphState: defaultGraphState(),
   }));
-
-// The heatmap is a graph-maker plugin instance: it owns its own view state and
-// builds its own PFrame from the columns handed to it as anchors.
-const heatmap = graphMakerPlugin.create({
-  pluginId: "heatmap",
-  config: {
-    chartType: "heatmap",
-    initialTitle: "Distance Analysis",
-    initialTemplate: "heatmap",
-    initialState: {
-      currentTab: "settings",
-      layersSettings: {
-        heatmap: { normalizationDirection: null },
-        heatmapClustered: { normalizationDirection: null },
-      },
-    },
-  },
-});
 
 export const platforma = BlockModelV3.create({ dataModel: blockDataModel, kind })
 
