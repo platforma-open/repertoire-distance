@@ -1,5 +1,9 @@
 import type { GraphMakerState } from "@milaboratories/graph-maker";
-import { flattenColumnContextDomain, graphMakerPlugin } from "@milaboratories/graph-maker/plugin";
+import {
+  flattenColumnContextDomain,
+  graphMakerPlugin,
+  transferableGraphState,
+} from "@milaboratories/graph-maker/plugin";
 import type { MetricUI } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
 import { kind } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
 import type { InferOutputsType, PColumnIdAndSpec } from "@platforma-sdk/model";
@@ -124,35 +128,12 @@ function parseLegacyDatasetLabel(legacy: string | undefined): string | undefined
   return legacy.slice(LEGACY_TITLE_PREFIX.length).trim() || undefined;
 }
 
-const blockDataModel = new DataModelBuilder({ kind })
-  .from<BlockData>("V20260519")
-  .upgradeLegacy<LegacyBlockArgs, LegacyBlockUiState>(({ args, uiState }) => ({
-    abundanceRef: args?.abundanceRef,
-    // Mirrors the previous V1 UI bootstrap (useMigrationMetrics): if a legacy
-    // project landed with no metrics configured, seed the default set.
-    metrics: args?.metrics && args.metrics.length > 0 ? args.metrics : createDefaultMetrics(),
-    customBlockLabel: "",
-    datasetLabel: parseLegacyDatasetLabel(uiState?.blockTitle),
-    lastAppliedModality: "antibody_tcr",
-    graphState: uiState?.graphState ?? defaultGraphState(),
-  }))
-  // A block created from a template starts on the params its kind accepted;
-  // one created by hand gets the default metric set and an unpicked input.
-  // `datasetLabel` stays unset either way — the UI snapshots it from the
-  // dataset options once they resolve.
-  .init(({ params }) => ({
-    abundanceRef: params?.abundanceRef,
-    metrics: params?.metrics ?? createDefaultMetrics(),
-    lastAppliedModality: params?.lastAppliedModality,
-    customBlockLabel: params?.customBlockLabel ?? "",
-    datasetLabel: undefined,
-    graphState: defaultGraphState(),
-  }));
-
 // The heatmap is a graph-maker plugin instance: it owns its own view state and
 // builds its own PFrame from the columns handed to it as anchors.
 const heatmap = graphMakerPlugin.create({
   pluginId: "heatmap",
+  // Where a chart saved before the plugin enters the chain.
+  transferAt: "v1",
   config: {
     chartType: "heatmap",
     initialTitle: "Distance Analysis",
@@ -166,6 +147,42 @@ const heatmap = graphMakerPlugin.create({
     },
   },
 });
+
+const blockDataModel = new DataModelBuilder({ kind })
+  .from<BlockData>("V20260519")
+  .upgradeLegacy<LegacyBlockArgs, LegacyBlockUiState>(({ args, uiState }) => ({
+    abundanceRef: args?.abundanceRef,
+    // Mirrors the previous V1 UI bootstrap (useMigrationMetrics): if a legacy
+    // project landed with no metrics configured, seed the default set.
+    metrics: args?.metrics && args.metrics.length > 0 ? args.metrics : createDefaultMetrics(),
+    customBlockLabel: "",
+    datasetLabel: parseLegacyDatasetLabel(uiState?.blockTitle),
+    lastAppliedModality: "antibody_tcr",
+    graphState: uiState?.graphState ?? defaultGraphState(),
+  }))
+  // A chart saved before the heatmap became a plugin instance: hand the plugin
+  // what survives the move. The data mapping does not — the old ids name
+  // columns in a frame built the old way — so it is left to `defaultOptions`.
+  .transfer(heatmap, (data) => ({
+    state: transferableGraphState(data.graphState),
+    selection: undefined,
+    chartType: "heatmap" as const,
+    readonlyInputs: [],
+    allowChartDeleting: false,
+    allowTitleEditing: false,
+  }))
+  // A block created from a template starts on the params its kind accepted;
+  // one created by hand gets the default metric set and an unpicked input.
+  // `datasetLabel` stays unset either way — the UI snapshots it from the
+  // dataset options once they resolve.
+  .init(({ params }) => ({
+    abundanceRef: params?.abundanceRef,
+    metrics: params?.metrics ?? createDefaultMetrics(),
+    lastAppliedModality: params?.lastAppliedModality,
+    customBlockLabel: params?.customBlockLabel ?? "",
+    datasetLabel: undefined,
+    graphState: defaultGraphState(),
+  }));
 
 export const platforma = BlockModelV3.create({ dataModel: blockDataModel, kind })
 
