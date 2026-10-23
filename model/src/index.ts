@@ -130,12 +130,11 @@ function parseLegacyDatasetLabel(legacy: string | undefined): string | undefined
 
 // The heatmap is a graph-maker plugin instance: it owns its own view state and
 // builds its own PFrame from the columns handed to it as anchors.
-const heatmap = graphMakerPlugin.create({
+const heatmap = graphMakerPlugin("heatmap").create({
   pluginId: "heatmap",
   // Where a chart saved before the plugin enters the chain.
   transferAt: "v1",
   config: {
-    chartType: "heatmap",
     initialTitle: "Distance Analysis",
     initialTemplate: "heatmap",
     initialState: {
