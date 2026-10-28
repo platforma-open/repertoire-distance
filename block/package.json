@@ -1,6 +1,6 @@
 {
   "name": "@platforma-open/milaboratories.repertoire-distance-2",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "files": [
     "dist",
     "block-pack"
