@@ -43,17 +43,7 @@ const downsamplingOptions: ListOption<string | undefined>[] = [
   { label: "Random Sampling", value: "hypergeometric" },
 ];
 
-const props = defineModel<MetricUI>({
-  required: true,
-  default: {
-    type: undefined,
-    intersection: "CDR3ntVJ",
-    downsampling: {
-      type: "hypergeometric",
-      valueChooser: "auto",
-    },
-  },
-});
+const props = defineModel<MetricUI>({ required: true });
 </script>
 
 <template>
