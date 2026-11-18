@@ -171,6 +171,11 @@ const blockDataModel = new DataModelBuilder({ kind })
     allowChartDeleting: false,
     allowTitleEditing: false,
   }))
+  // The data is unchanged; the version bump is the point. `DataModel.migrate`
+  // takes a fast path when the stored version is already the latest one, and
+  // that path returns no transfers at all — so without a step to run, the
+  // chart above would be handed nothing and start from its config defaults.
+  .migrate<BlockData>("V20261118", (data) => data)
   // A block created from a template starts on the params its kind accepted;
   // one created by hand gets the default metric set and an unpicked input.
   // `datasetLabel` stays unset either way — the UI snapshots it from the
