@@ -1,9 +1,5 @@
 import type { GraphMakerState } from "@milaboratories/graph-maker";
-import {
-  flattenColumnContextDomain,
-  graphMakerPlugin,
-  transferableGraphState,
-} from "@milaboratories/graph-maker/plugin";
+import { flattenColumnContextDomain, graphMakerPlugin } from "@milaboratories/graph-maker/plugin";
 import type { MetricUI } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
 import { kind } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
 import type { DatasetOption, InferOutputsType, PColumnIdAndSpec } from "@platforma-sdk/model";
@@ -165,11 +161,11 @@ const blockDataModel = new DataModelBuilder({ kind })
     lastAppliedModality: "antibody_tcr",
     graphState: uiState?.graphState ?? defaultGraphState(),
   }))
-  // A chart saved before the heatmap became a plugin instance: hand the plugin
-  // what survives the move. The data mapping does not — the old ids name
-  // columns in a frame built the old way — so it is left to `defaultOptions`.
+  // A chart saved before the heatmap became a plugin instance moves over whole:
+  // the plugin's frame registers a column under the same id the old one did, so
+  // the saved data mapping still names real columns.
   .transfer(heatmap, (data) => ({
-    state: transferableGraphState(data.graphState),
+    state: data.graphState,
     chartType: "heatmap" as const,
     readonlyInputs: [],
     allowChartDeleting: false,
