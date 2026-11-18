@@ -1,20 +1,13 @@
 import type { GraphMakerState } from "@milaboratories/graph-maker";
+import { flattenColumnContextDomain, graphMakerPlugin } from "@milaboratories/graph-maker/plugin";
 import type { MetricUI } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
 import { kind } from "@platforma-open/milaboratories.repertoire-distance-2.kind";
-import type {
-  DatasetOption,
-  InferOutputsType,
-  PColumnIdAndSpec,
-  PColumnSpec,
-} from "@platforma-sdk/model";
+import type { DatasetOption, InferOutputsType, PColumnIdAndSpec } from "@platforma-sdk/model";
 import {
   BlockModelV3,
   buildDatasetOptions,
   createGlobalPObjectId,
   DataModelBuilder,
-  getRelatedColumns,
-  isHiddenFromGraphColumn,
-  isHiddenFromUIColumn,
   isPColumnSpec,
 } from "@platforma-sdk/model";
 import type { BlockArgs, BlockData, LegacyBlockArgs, LegacyBlockUiState } from "./types";
@@ -137,6 +130,25 @@ function parseLegacyDatasetLabel(legacy: string | undefined): string | undefined
   return legacy.slice(LEGACY_TITLE_PREFIX.length).trim() || undefined;
 }
 
+// The heatmap is a graph-maker plugin instance: it owns its own view state and
+// builds its own PFrame from the columns handed to it as anchors.
+const heatmap = graphMakerPlugin("heatmap").create({
+  pluginId: "heatmap",
+  // Where a chart saved before the plugin enters the chain.
+  transferAt: "v1",
+  config: {
+    initialTitle: "Distance Analysis",
+    initialTemplate: "heatmap",
+    initialState: {
+      currentTab: "settings",
+      layersSettings: {
+        heatmap: { normalizationDirection: null },
+        heatmapClustered: { normalizationDirection: null },
+      },
+    },
+  },
+});
+
 const blockDataModel = new DataModelBuilder({ kind })
   .from<BlockData>("V20260519")
   .upgradeLegacy<LegacyBlockArgs, LegacyBlockUiState>(({ args, uiState }) => ({
@@ -149,6 +161,21 @@ const blockDataModel = new DataModelBuilder({ kind })
     lastAppliedModality: "antibody_tcr",
     graphState: uiState?.graphState ?? defaultGraphState(),
   }))
+  // A chart saved before the heatmap became a plugin instance moves over whole:
+  // the plugin's frame registers a column under the same id the old one did, so
+  // the saved data mapping still names real columns.
+  .transfer(heatmap, (data) => ({
+    state: data.graphState,
+    chartType: "heatmap" as const,
+    readonlyInputs: [],
+    allowChartDeleting: false,
+    allowTitleEditing: false,
+  }))
+  // The data is unchanged; the version bump is the point. `DataModel.migrate`
+  // takes a fast path when the stored version is already the latest one, and
+  // that path returns no transfers at all — so without a step to run, the
+  // chart above would be handed nothing and start from its config defaults.
+  .migrate<BlockData>("V20261118", (data) => data)
   // A block created from a template starts on the params its kind accepted;
   // one created by hand gets the default metric set and an unpicked input.
   // `datasetLabel` stays unset either way — the UI snapshots it from the
@@ -164,6 +191,14 @@ const blockDataModel = new DataModelBuilder({ kind })
   }));
 
 export const platforma = BlockModelV3.create({ dataModel: blockDataModel, kind })
+
+  // The block's own overlap columns are the anchors; the plugin discovers what
+  // else in the project can be bound to them. The two sample axes carry their
+  // side in `contextDomain`, so a plain sample-metadata column is discovered
+  // once per side and enters the frame qualified for it.
+  .plugin(heatmap, {
+    anchorColumns: (ctx) => ctx.outputs?.resolve("pf")?.getPColumns(),
+  })
 
   .args<BlockArgs>((data) => {
     if (data.abundanceRef === undefined) throw new Error("Abundance dataset is required");
@@ -237,57 +272,10 @@ export const platforma = BlockModelV3.create({ dataModel: blockDataModel, kind }
       }) ?? [],
   )
 
-  // Same shape as `createPFrameForGraphs`, with the specs rewritten on the way
-  // into the frame.
-  //
-  // The overlap matrix is keyed by two `pl7.app/sampleId` axes, and the "which
-  // side of the pair" marker lives in their `contextDomain`, not their
-  // `domain`. That is what makes sample metadata reach this block at all:
-  // `domain` is matched by exact equality, so a marker placed there would make
-  // both axes unequal to the plain `pl7.app/sampleId` every other block emits,
-  // and `getRelatedColumns` below would find no labels, no metadata columns,
-  // nothing to annotate the heatmap with. `contextDomain` is matched by
-  // kinship instead, so the axes stay canonical for discovery while still
-  // carrying the marker.
-  //
-  // Inside a PFrame, however, axes are joined by exact domain. Left the way
-  // they arrive, the two sides would read as one axis and the matrix would
-  // collapse onto its diagonal. So the marker is folded back into `domain`
-  // here, on the column spec and on every axis, once discovery has already
-  // happened. Both halves are needed: drop the fold and the frame is wrong,
-  // move the marker back into `domain` upstream and the frame is bare.
-  .outputWithStatus("pf", (ctx) => {
-    const pCols = ctx.outputs?.resolve("pf")?.getPColumns();
-    if (pCols == null || pCols?.some((v) => v.data === undefined)) return undefined;
-
-    const suitableSpec = (spec: PColumnSpec) =>
-      !isHiddenFromUIColumn(spec) && !isHiddenFromGraphColumn(spec);
-
-    return ctx.createPFrame(
-      getRelatedColumns(ctx, { predicate: suitableSpec, columns: pCols }).map((c) => {
-        return {
-          ...c,
-          spec: {
-            ...c.spec,
-            domain: {
-              ...c.spec.domain,
-              ...c.spec.contextDomain,
-            },
-            axesSpec: c.spec.axesSpec.map((axis) => {
-              return {
-                ...axis,
-                domain: {
-                  ...axis.domain,
-                  ...axis.contextDomain,
-                },
-              };
-            }),
-          },
-        };
-      }),
-    );
-  })
-
+  // Specs as the plugin's frame holds them, which is not how the workflow wrote
+  // them: the plugin moves an axis role out of `contextDomain` and into
+  // `domain`. The UI builds its default options from these, so describing the
+  // axes any other way asks the chart for axes the frame does not have.
   .output("heatmapPCols", (ctx) => {
     const pCols = ctx.outputs?.resolve("pf")?.getPColumns();
     if (pCols === undefined) return undefined;
@@ -295,22 +283,7 @@ export const platforma = BlockModelV3.create({ dataModel: blockDataModel, kind }
       (c) =>
         ({
           columnId: c.id,
-          spec: {
-            ...c.spec,
-            domain: {
-              ...c.spec.domain,
-              ...c.spec.contextDomain,
-            },
-            axesSpec: c.spec.axesSpec.map((axis) => {
-              return {
-                ...axis,
-                domain: {
-                  ...axis.domain,
-                  ...axis.contextDomain,
-                },
-              };
-            }),
-          },
+          spec: flattenColumnContextDomain(c.spec),
         }) satisfies PColumnIdAndSpec,
     );
   })
